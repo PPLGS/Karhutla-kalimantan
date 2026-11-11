@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Kalimantan Fire Intelligence v2.0 | Dashboard Real-Time & Simulasi</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <!-- HEADER UTAMA PLATFORM -->
+  <header class="top">
+    <div class="brand">
+      <div class="brand-icon">🔥</div>
+      <div>
+        <h1>KALIMANTAN FIRE INTELLIGENCE v2.0</h1>
+        <p>REAL-TIME MONITORING & CA-BM FIRE SIMULATION PLATFORM</p>
+      </div>
+    </div>
+    <div class="topright">
+      <span class="live">BMKG API CONNECTED</span>
+      <span class="status-text">KALIMANTAN REGION ON-STREAM</span>
+      <div class="date" id="dateNow"></div>
+    </div>
+  </header>
+
+  <main class="wrap">
+
+    <!-- METRICS BAR RINGKASAN STATUS -->
+    <section class="metrics">
+      <div class="metric">
+        <label>TITIK API REAL-TIME (BMKG)</label>
+        <strong id="hotspotCount">142</strong>
+        <small>Terhubung live data Kalimantan</small>
+      </div>
+      <div class="metric">
+        <label>ESTIMASI LUAS TERBAKAR</label>
+        <strong id="burnedArea">1,240 ha</strong>
+        <small>Kalkulasi spasial otomatis</small>
+      </div>
+      <div class="metric">
+        <label>STATUS LAHAN GAMBUT</label>
+        <strong id="peatStatus">WASPADA (82%)</strong>
+        <small>Layer kelembapan tanah gambut</small>
+      </div>
+      <div class="metric">
+        <label>KECEPATAN ANGIN RATA-RATA</label>
+        <strong id="windSpeed">18 km/j (NW)</strong>
+        <small>Streaming cuaca real-time</small>
+      </div>
+    </section>
+
+    <!-- ARSITEKTUR UTAMA 4-PANEL DASHBOARD -->
+    <section class="main-dashboard-grid">
+
+      <!-- PANEL 1: PETA SPASIAL INTERAKTIF (REAL-TIME) -->
+      <article class="panel panel-map">
+        <div class="panel-head">
+          <div>
+            <h3>Panel 1: Peta Monitoring Kebakaran Real-Time</h3>
+            <p>Visualisasi spasial titik api live, layer gambut, & grid dampak 1 km</p>
+          </div>
+          <div class="toolbar">
+            <button class="btn primary" id="fitBtn">Zoom ke Kalimantan</button>
+            <button class="btn" id="resetBtn">Reset View</button>
+          </div>
+        </div>
+
+        <!-- Layer Control Switcher -->
+        <div class="layer-control-bar">
+          <label class="layer-chk">
+            <input type="checkbox" id="chkLiveHotspot" checked>
+            <span class="badge badge-red">● Titik Api Live (BMKG)</span>
+          </label>
+          <label class="layer-chk">
+            <input type="checkbox" id="chkPeatland" checked>
+            <span class="badge badge-amber">■ Peta Lahan Gambut</span>
+          </label>
+          <label class="layer-chk">
+            <input type="checkbox" id="chkGeoGrid" checked>
+            <span class="badge badge-purple">▧ Grid Dampak 1km (GeoJSON)</span>
+          </label>
+        </div>
+
+        <div id="map" class="map-area"></div>
+      </article>
+
+      <!-- PANEL 2: SIMULASI PERGERAKAN API (PEMODELAN CA-BM) -->
+      <article class="panel panel-simulation">
+        <div class="panel-head">
+          <div>
+            <h3>Panel 2: Simulasi Pemodelan Penyebaran Api</h3>
+            <p>Hasil model adveksi CA-BM puncak kejadian (1–7 Oktober)</p>
+          </div>
+          <span class="tag tag-sim">SIMULASI CA-BM</span>
+        </div>
+
+        <div class="sim-container">
+          <div class="sim-screen" id="simScreen">
+            <img id="simGifPlayer" src="https://via.placeholder.com/600x350/0b1922/58e0b1?text=Klik+'Simulasikan'+untuk+memutar+animasi+adveksi+3+hari" alt="Simulasi Adveksi Api">
+            <div class="sim-overlay-info">
+              <span id="simDateText">Periode: 01 Okt 2026 - 07 Okt 2026</span>
+              <span id="simStatusText">Status: Standby</span>
+            </div>
+          </div>
+
+          <div class="sim-controls">
+            <div class="filter-group">
+              <label>PILIH PERIODE PREDIKSI:</label>
+              <select id="simDateFilter" class="sim-select">
+                <option value="oct-peak">Puncak Karhutla (1-7 Oktober)</option>
+                <option value="oct-mid">Pertengahan Oktober</option>
+                <option value="nov-current">Skenario Musim Kering</option>
+              </select>
+            </div>
+            <button class="btn primary btn-sim" id="btnRunSimulation">▶ Simulasikan Pergerakan Api</button>
+          </div>
+        </div>
+      </article>
+
+      <!-- PANEL 3: ANALYTICS & PREDIKSI 3-HARI -->
+      <article class="panel panel-analytics">
+        <div class="panel-head">
+          <div>
+            <h3>Panel 3: Grafik Analytics & Forecast Risk 3-Harian</h3>
+            <p>Tren kenaikan hotspot dan proyeksi tingkat risiko penyebaran</p>
+          </div>
+          <button class="btn" id="exportChartBtn">Export Data Prediksi</button>
+        </div>
+        <div class="chart-wrap">
+          <canvas id="forecastChart"></canvas>
+        </div>
+      </article>
+
+      <!-- PANEL 4: STREAMING PARAMETER CUACA & DATA ATRIBUT -->
+      <article class="panel panel-weather-attribute">
+        <div class="panel-head">
+          <div>
+            <h3>Panel 4: Live Weather Stream & Tabel Atribut</h3>
+            <p>Parameter lingkungan real-time dan ringkasan data per provinsi</p>
+          </div>
+        </div>
+
+        <!-- Weather Metrics Stream Grid -->
+        <div class="weather-grid">
+          <div class="w-card">
+            <span class="w-label">Kelembapan Udara</span>
+            <span class="w-val" id="valHumidity">45%</span>
+            <small class="w-sub">Potensi Kering: Tinggi</small>
+          </div>
+          <div class="w-card">
+            <span class="w-label">Curah Hujan (24h)</span>
+            <span class="w-val" id="valRain">0.2 mm</span>
+            <small class="w-sub">Kategori: Sangat Rendah</small>
+          </div>
+          <div class="w-card">
+            <span class="w-label">Arah & Kecepatan Angin</span>
+            <span class="w-val" id="valWind">NW / 18 km/jam</span>
+            <small class="w-sub">Mendorong api ke Tenggara</small>
+          </div>
+        </div>
+
+        <!-- Data Table -->
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>PROVINSI</th>
+                <th>HOTSPOT LIVE</th>
+                <th>RISIKO GAMBUT</th>
+                <th>ESTIMASI LUAS</th>
+              </tr>
+            </thead>
+            <tbody id="dataRows">
+              <!-- Baris data diisi otomatis oleh app.js -->
+            </tbody>
+          </table>
+        </div>
+      </article>
+
+    </section>
+
+    <!-- UPLOAD GIS PANEL (SUPPORT GEOJSON, CSV, SHP ZIP, IPYNB) -->
+    <article class="panel upload-panel">
+      <div class="panel-head">
+        <div>
+          <h3>+ Unggah Data GIS & Model (GeoJSON, SHP ZIP, CSV, IPYNB)</h3>
+          <p>Integrasi langsung file pengolahan spasial lokal ke dalam map & viewer</p>
+        </div>
+      </div>
+      <div class="upload-controls">
+        <input type="file" id="fileInput" accept=".geojson,.json,.zip,.csv,.ipynb,.tif,.tiff">
+        <button class="btn primary" id="loadBtn">Proses & Muat Data</button>
+        <button class="btn" id="exportCsvBtn">Ekspor Ringkasan CSV</button>
+      </div>
+      <div id="message" class="status"></div>
+    </article>
+
+    <footer>
+      KALIMANTAN FIRE INTELLIGENCE v2.0 &copy; 2026 — 3D & REAL-TIME SPATIAL ANALYTICS SYSTEM
+    </footer>
+  </main>
+
+  <!-- LIBRARIES & SCRIPT -->
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
