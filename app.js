@@ -1,5 +1,5 @@
 // ============================================================
-// KALIMANTAN FIRE INTELLIGENCE v2.0 - GUARANTEED DISPLAY APP.JS
+// KALIMANTAN FIRE INTELLIGENCE v2.0 - FULL CONSOLIDATED APP.JS
 // ============================================================
 
 let map;
@@ -14,11 +14,11 @@ document.addEventListener('DOMContentLoaded', () => {
   initDate();
   initMap();
   initSimulation();
-  
-  // RENDER GRAFIK SEGERA SAAT PAGE LOAD (GUARANTEED VISIBILITY)
+
+  // Render grafik langsung saat awal load agar dijamin tampil 100%
   renderDefaultChart();
-  
-  // LOAD DATA ASYNC
+
+  // Muat data spasial & CSV dari folder /data
   loadDashboardData();
 });
 
@@ -61,7 +61,7 @@ function initMap() {
   document.getElementById('resetBtn').onclick = () => map.setView([-1.5, 114.0], 6);
 }
 
-// Helper Fetch Vector Layer
+// Helper Fetch Vector (.json / .geojson)
 async function fetchVectorLayer(fileNameWithoutExt) {
   const paths = [
     `./data/${fileNameWithoutExt}.json`,
@@ -121,7 +121,7 @@ async function loadDashboardData() {
     })
     .catch(() => {});
 
-  // E. CSV Indikator Harian -> Update Chart Jika CSV Siap
+  // E. CSV Indikator Harian -> Update Chart
   Papa.parse('./data/01_Indikator_Kebakaran_Harian.csv', {
     download: true,
     header: true,
@@ -131,7 +131,7 @@ async function loadDashboardData() {
     }
   });
 
-  // F. CSV Ringkasan Simulasi
+  // F. CSV Ringkasan Simulasi -> Update Tabel
   Papa.parse('./data/03_Ringkasan_Simulasi.csv', {
     download: true,
     header: true,
@@ -142,7 +142,7 @@ async function loadDashboardData() {
   });
 }
 
-// 4. PLAYER PANEL SIMULASI (CANVAS DIMENSI TERKUNCI)
+// 4. SIMULATION PLAYER (DUAL SKENARIO: GIF & CANVAS)
 function initSimulation() {
   const btnRun = document.getElementById('btnRunSimulation');
   const simGifPlayer = document.getElementById('simGifPlayer');
@@ -151,22 +151,38 @@ function initSimulation() {
   const simDateText = document.getElementById('simDateText');
   const simDateFilter = document.getElementById('simDateFilter');
 
-  const gifPath = 'assets/Animasi_CA_ABM_Kalimantan_30_Hari.gif';
-  if (simGifPlayer) simGifPlayer.src = gifPath;
+  const gifPath = './assets/Animasi_CA_ABM_Kalimantan_30_Hari.gif';
+
+  // Set ketersediaan elemen GIF awal
+  if (simGifPlayer) {
+    simGifPlayer.src = gifPath;
+    simGifPlayer.onerror = () => {
+      simGifPlayer.src = 'assets/Animasi_CA_ABM_Kalimantan_30_Hari.gif';
+    };
+  }
 
   btnRun?.addEventListener('click', () => {
-    if (rasterSimulationTimer) clearInterval(rasterSimulationTimer);
+    // Stop timer raster jika simulasi sedang berjalan
+    if (rasterSimulationTimer) {
+      clearInterval(rasterSimulationTimer);
+      rasterSimulationTimer = null;
+    }
+
     const mode = simDateFilter.value;
 
     if (mode === '30-day-gif') {
+      // SKENARIO 1: MEMUTAR ANIMASI GIF
       simCanvas.style.display = 'none';
       simGifPlayer.style.display = 'block';
-      simGifPlayer.src = gifPath + '?t=' + new Date().getTime();
+
+      // Reset src agar animasi GIF diputar ulang dari awal
+      simGifPlayer.src = gifPath;
 
       simDateText.textContent = "Skenario: Animasi CA-BM 30 Hari (.gif)";
       simStatusText.textContent = "Status: Memutar Animasi Simulasi CA-BM";
       simStatusText.style.color = "#58e0b1";
     } else {
+      // SKENARIO 2: MEMUTAR RASTER DI KANVAS & PETA
       simGifPlayer.style.display = 'none';
       simCanvas.style.display = 'block';
 
@@ -180,18 +196,17 @@ function initSimulation() {
 }
 
 function playCanvasRasterSimulation(canvas, statusTextEl) {
-  // FIX PERMANEN: Kunci dimensi canvas agar tidak 0px
   canvas.width = 600;
   canvas.height = 280;
   const ctx = canvas.getContext('2d');
   let step = 1;
 
   rasterSimulationTimer = setInterval(() => {
-    // A. Clear & Background
+    // A. Background
     ctx.fillStyle = '#08131b';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-    // B. Peta Kontur Sederhana Pulau Kalimantan
+    // B. Peta Kontur Sederhana Kalimantan
     ctx.beginPath();
     ctx.strokeStyle = '#2d5262';
     ctx.lineWidth = 2;
@@ -201,7 +216,7 @@ function playCanvasRasterSimulation(canvas, statusTextEl) {
     ctx.closePath();
     ctx.stroke();
 
-    // C. Sebaran Titik Api CA-BM Membesar Seiring Step
+    // C. Sebaran Api Membesar Seiring Step (1-30)
     const fireRadius = 6 + (step * 3.5);
     const hotspots = [
       { x: 270, y: 190 }, // Kalteng
@@ -230,7 +245,7 @@ function playCanvasRasterSimulation(canvas, statusTextEl) {
     ctx.font = '11px Manrope, sans-serif';
     ctx.fillText(`Estimasi Luas Terbakar: ${(step * 125 + 500).toLocaleString()} Ha`, 15, 42);
 
-    // E. Synchronize Raster TIF pada Peta Utama
+    // E. Synchronize Raster TIF pada Peta Kiri
     const formattedIdx = String(step).padStart(2, '0');
     fetch(`./data/raster_CA_5x5_interval_${formattedIdx}.tif`)
       .then(res => res.arrayBuffer())
@@ -258,7 +273,7 @@ function playCanvasRasterSimulation(canvas, statusTextEl) {
   }, 450);
 }
 
-// 5. RENDER GRAFIK (LANGSUNG TAMPIL 100%)
+// 5. CHART RENDER & CSV PARSER
 function renderDefaultChart() {
   const canvas = document.getElementById('forecastChart');
   if (!canvas) return;
