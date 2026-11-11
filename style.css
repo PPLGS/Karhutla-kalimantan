@@ -171,3 +171,19 @@ footer { font: 10px 'DM Mono', monospace; color: #55717c; text-align: center; pa
   width: 100% !important;
   height: 100% !important;
 }
+
+/* FIX DIMENSI SIMULASI GIF & CANVAS */
+#simGifPlayer {
+  width: 100% !important;
+  height: 100% !important;
+  max-height: 280px !important;
+  object-fit: contain !important;
+  display: block;
+  margin: 0 auto;
+}
+
+#simCanvas {
+  width: 100% !important;
+  height: 280px !important;
+  object-fit: contain;
+}
