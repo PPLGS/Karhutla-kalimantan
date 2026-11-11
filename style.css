@@ -1,0 +1,418 @@
+/* ============================================================
+   KALIMANTAN FIRE INTELLIGENCE v2.0 - DASHBOARD STYLESHEET
+   4-Panel Modular Grid Architecture
+   ============================================================ */
+
+:root {
+  --bg: #071018;
+  --panel: #0c1a24;
+  --panel2: #10232e;
+  --line: #1d3945;
+  --muted: #76909d;
+  --text: #e7f2f3;
+  --mint: #58e0b1;
+  --amber: #ffb45e;
+  --red: #ff6c62;
+  --blue: #62b9e9;
+  --purple: #9c83db;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: radial-gradient(ellipse at 58% 12%, #12313a 0%, #071018 45%);
+  color: var(--text);
+  font-family: 'Manrope', sans-serif;
+  min-height: 100vh;
+}
+
+/* HEADER UTAMA */
+.top {
+  height: 72px;
+  border-bottom: 1px solid var(--line);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 26px;
+  background: rgba(7, 16, 24, 0.95);
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  backdrop-filter: blur(14px);
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.brand-icon {
+  width: 38px;
+  height: 38px;
+  border: 1px solid #286353;
+  border-radius: 10px;
+  background: linear-gradient(145deg, #173c3d, #10232c);
+  display: grid;
+  place-items: center;
+  font-size: 20px;
+}
+
+.brand h1 {
+  font-size: 14px;
+  letter-spacing: 1.5px;
+  margin: 0;
+  font-weight: 800;
+}
+
+.brand p {
+  font: 10px 'DM Mono', monospace;
+  color: #8ba7af;
+  margin: 2px 0 0;
+}
+
+.topright {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  font: 10px 'DM Mono', monospace;
+  color: #8da8b1;
+}
+
+.live {
+  color: var(--mint);
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-weight: 600;
+}
+
+.live::before {
+  content: "";
+  width: 8px;
+  height: 8px;
+  background: var(--mint);
+  border-radius: 50%;
+  box-shadow: 0 0 12px var(--mint);
+  animation: pulse 1.5s infinite;
+}
+
+@keyframes pulse {
+  50% { opacity: 0.35; box-shadow: 0 0 2px var(--mint); }
+}
+
+.date {
+  border: 1px solid var(--line);
+  padding: 6px 12px;
+  border-radius: 6px;
+  background: var(--panel);
+}
+
+.wrap {
+  max-width: 1600px;
+  margin: auto;
+  padding: 20px 24px 40px;
+}
+
+/* METRICS BAR SUMMARY */
+.metrics {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.metric {
+  background: linear-gradient(145deg, #10232e, #0b1922);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 14px 16px;
+}
+
+.metric label {
+  font: 9px 'DM Mono', monospace;
+  color: #7e9ba5;
+  letter-spacing: 1.2px;
+}
+
+.metric strong {
+  display: block;
+  font-size: 24px;
+  margin: 6px 0 2px;
+  color: var(--mint);
+  font-weight: 800;
+}
+
+.metric small {
+  font-size: 10px;
+  color: #78929c;
+}
+
+/* DASHBOARD 4-PANEL LAYOUT GRID */
+.main-dashboard-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.panel {
+  background: linear-gradient(145deg, rgba(13, 29, 39, 0.95), rgba(10, 23, 32, 0.95));
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
+  display: flex;
+  flex-direction: column;
+}
+
+.panel-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--line);
+  background: rgba(7, 16, 24, 0.4);
+}
+
+.panel-head h3 {
+  font-size: 13px;
+  margin: 0 0 4px;
+  color: var(--text);
+}
+
+.panel-head p {
+  font-size: 10px;
+  color: #78939d;
+  margin: 0;
+}
+
+/* PANEL 1: LEAFLET MAP & LAYER SWITCHER */
+.layer-control-bar {
+  display: flex;
+  gap: 10px;
+  padding: 10px 16px;
+  background: #091620;
+  border-bottom: 1px solid var(--line);
+  flex-wrap: wrap;
+}
+
+.layer-chk {
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  font-size: 11px;
+}
+
+.layer-chk input {
+  margin-right: 6px;
+}
+
+.badge {
+  font: 10px 'DM Mono', monospace;
+  padding: 4px 8px;
+  border-radius: 4px;
+}
+.badge-red { background: rgba(255, 108, 98, 0.15); color: var(--red); border: 1px solid var(--red); }
+.badge-amber { background: rgba(255, 180, 94, 0.15); color: var(--amber); border: 1px solid var(--amber); }
+.badge-purple { background: rgba(156, 131, 219, 0.15); color: var(--purple); border: 1px solid var(--purple); }
+
+.map-area {
+  height: 380px;
+  width: 100%;
+}
+
+/* PANEL 2: PLAYER SIMULASI */
+.sim-container {
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  height: 100%;
+}
+
+.sim-screen {
+  position: relative;
+  width: 100%;
+  height: 280px;
+  background: #08131b;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.sim-screen img {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+}
+
+.sim-overlay-info {
+  position: absolute;
+  bottom: 10px;
+  left: 10px;
+  right: 10px;
+  display: flex;
+  justify-content: space-between;
+  background: rgba(7, 16, 24, 0.85);
+  padding: 6px 12px;
+  border-radius: 4px;
+  font: 10px 'DM Mono', monospace;
+  color: var(--mint);
+  border: 1px solid var(--line);
+}
+
+.sim-controls {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+
+.filter-group {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.filter-group label {
+  font: 9px 'DM Mono', monospace;
+  color: #78939d;
+}
+
+.sim-select {
+  background: #102731;
+  border: 1px solid var(--line);
+  color: var(--text);
+  padding: 6px 10px;
+  border-radius: 6px;
+  font-size: 11px;
+}
+
+/* PANEL 3: ANALYTICS CHART */
+.chart-wrap {
+  height: 320px;
+  padding: 16px;
+}
+
+/* PANEL 4: WEATHER & TABLE */
+.weather-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  padding: 14px 16px;
+}
+
+.w-card {
+  background: #091620;
+  border: 1px solid var(--line);
+  padding: 10px;
+  border-radius: 6px;
+  display: flex;
+  flex-direction: column;
+}
+
+.w-label {
+  font: 9px 'DM Mono', monospace;
+  color: #78939d;
+}
+
+.w-val {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--mint);
+  margin: 4px 0;
+}
+
+.w-sub {
+  font-size: 9px;
+  color: #8ca5af;
+}
+
+.table-wrap {
+  padding: 0 16px 16px;
+  overflow-x: auto;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 11px;
+}
+
+th {
+  text-align: left;
+  font: 9px 'DM Mono', monospace;
+  color: #78939d;
+  padding: 8px;
+  border-bottom: 1px solid var(--line);
+}
+
+td {
+  padding: 8px;
+  border-bottom: 1px solid #142a35;
+  color: #c4d5d9;
+}
+
+/* TOMBOL & UPLOAD PANEL */
+.btn {
+  border: 1px solid var(--line);
+  background: #102731;
+  color: #d4e5e7;
+  border-radius: 6px;
+  padding: 7px 12px;
+  font-size: 11px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn:hover {
+  border-color: var(--mint);
+  color: var(--mint);
+}
+
+.btn.primary {
+  background: #17634f;
+  border-color: #238466;
+  color: #eafff7;
+}
+
+.upload-panel {
+  padding: 16px;
+  margin-bottom: 20px;
+}
+
+.upload-controls {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  margin-top: 12px;
+}
+
+.status {
+  font: 11px 'DM Mono', monospace;
+  margin-top: 8px;
+}
+
+footer {
+  font: 10px 'DM Mono', monospace;
+  color: #55717c;
+  text-align: center;
+  padding: 20px 0;
+}
+
+/* RESPONSIVITAS LAYAR */
+@media (max-width: 1024px) {
+  .main-dashboard-grid {
+    grid-template-columns: 1fr;
+  }
+  .metrics {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
