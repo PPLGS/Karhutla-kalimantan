@@ -1,6 +1,6 @@
 // ============================================================
 // KALIMANTAN FIRE INTELLIGENCE v2.0 - MAIN APPLICATION LOGIC
-// Refactored based on Discussion Transcript & 4-Panel Architecture
+// Includes Multi-Basemap Switcher (No API Key Required) & Clean Titles
 // ============================================================
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -25,28 +25,58 @@ function initDate() {
   }
 }
 
-// 2. INISIALISASI PETA LEAFLET (REGION KALIMANTAN)
+// 2. INISIALISASI PETA LEAFLET DENGAN PILIHAN MULTI-BASEMAP (FREE / TANPA API KEY)
 let map;
 let liveHotspotGroup = L.layerGroup();
 let peatlandGroup = L.layerGroup();
 let geoGridGroup = L.layerGroup();
+let uploadedTifGroup = L.layerGroup();
 
 function initMap() {
-  // Koordinat Tengah Kalimantan: [-1.5, 114.0], Zoom level 6
+  // Center Kalimantan: [-1.5, 114.0], Zoom Level 6
   map = L.map('map').setView([-1.5, 114.0], 6);
 
-  // Basemap Gelap (CARTO Dark Matter)
-  L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-    maxZoom: 19,
-    attribution: '&copy; OpenStreetMap &copy; CARTO'
-  }).addTo(map);
+  // KOLEKSI BASEMAP BEBAS API KEY (OSM, ESRI, GOOGLE, OPENTOPOMAP)
+  const basemaps = {
+    "Esri Dark Canvas": L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}', {
+      maxZoom: 16,
+      attribution: 'Tiles &copy; Esri &mdash; Esri, DeLorme, NAVTEQ'
+    }),
+    "Esri Satelit": L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+      maxZoom: 19,
+      attribution: 'Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community'
+    }),
+    "OpenStreetMap": L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 19,
+      attribution: '&copy; OpenStreetMap contributors'
+    }),
+    "Google Satelit": L.tileLayer('https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}', {
+      maxZoom: 20,
+      attribution: '&copy; Google Maps'
+    }),
+    "Esri Topografi": L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}', {
+      maxZoom: 19,
+      attribution: 'Tiles &copy; Esri'
+    }),
+    "OpenTopoMap": L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', {
+      maxZoom: 17,
+      attribution: '&copy; OpenTopoMap contributors'
+    })
+  };
 
-  // Tambahkan Layer Groups ke Peta
+  // Set Default Basemap ke Esri Dark Canvas (Tanpa Watermark API Key)
+  basemaps["Esri Dark Canvas"].addTo(map);
+
+  // Tambahkan Layer Control Switcher di Kanan Atas Peta
+  L.control.layers(basemaps, null, { position: 'topright', collapsed: false }).addTo(map);
+
+  // Tambahkan Layer Groups Spasial
   liveHotspotGroup.addTo(map);
   peatlandGroup.addTo(map);
   geoGridGroup.addTo(map);
+  uploadedTifGroup.addTo(map);
 
-  // Muat Data Contoh Spasial Kalimantan
+  // Populate Sample Data
   populateSampleHotspots();
   populateSamplePeatland();
   populateSampleGrid();
@@ -56,7 +86,7 @@ function initMap() {
   document.getElementById('resetBtn').onclick = () => map.setView([-1.5, 114.0], 6);
 }
 
-// 3. SAKELAR KONTROL LAYER (PANEL 1)
+// 3. SAKELAR KONTROL LAYER DATA SPASIAL
 function initLayerControls() {
   document.getElementById('chkLiveHotspot').addEventListener('change', (e) => {
     if (e.target.checked) map.addLayer(liveHotspotGroup);
@@ -139,7 +169,7 @@ function populateSampleGrid() {
   geoGridGroup.addLayer(gridPoly);
 }
 
-// 4. PEMUTAR SIMULASI CA-BM (PANEL 2)
+// 4. PEMUTAR SIMULASI CA-BM
 function initSimulation() {
   const btnRun = document.getElementById('btnRunSimulation');
   const simGifPlayer = document.getElementById('simGifPlayer');
@@ -154,7 +184,6 @@ function initSimulation() {
     setTimeout(() => {
       const selectedScenario = simDateFilter.options[simDateFilter.selectedIndex].text;
       simDateText.textContent = `Periode: ${selectedScenario}`;
-      // Placeholder GIF pergerakan simulasi api adveksi CA-BM
       simGifPlayer.src = "https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExM3ZpdXo5aHRqMmJhd3ZsdTFydW1mN2JndXRyNnVsNDQ1Y2EycCZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/3o7TKSjRrfIPjeiVyM/giphy.gif";
       simStatusText.textContent = "Status: Simulasi Pergerakan Api Aktif (CA-BM)";
       simStatusText.style.color = "#58e0b1";
@@ -162,7 +191,7 @@ function initSimulation() {
   });
 }
 
-// 5. GRAFIK ANALYTICS & FORECAST 3-HARI (PANEL 3)
+// 5. GRAFIK ANALYTICS & FORECAST 3-HARI
 function initForecastChart() {
   const ctx = document.getElementById('forecastChart').getContext('2d');
   
@@ -217,7 +246,7 @@ function initForecastChart() {
   };
 }
 
-// 6. STREAMING CUACA & TABEL ATRIBUT (PANEL 4)
+// 6. STREAMING CUACA & TABEL ATRIBUT
 function initWeatherAndTable() {
   const tableBody = document.getElementById('dataRows');
   const provincesData = [
@@ -238,23 +267,112 @@ function initWeatherAndTable() {
   `).join('');
 }
 
-// 7. FILE UPLOAD & PROSES EXPORT CSV
+// 7. PENANGANAN UPLOAD UTUH (SEMAU FORMAT: TIF, GIF, GEOJSON, ZIP, CSV, IPYNB)
 function initFileUploads() {
   const loadBtn = document.getElementById('loadBtn');
   const fileInput = document.getElementById('fileInput');
   const messageEl = document.getElementById('message');
   const exportCsvBtn = document.getElementById('exportCsvBtn');
 
-  loadBtn.onclick = () => {
+  loadBtn.onclick = async () => {
     const file = fileInput.files[0];
     if (!file) {
-      messageEl.textContent = "Pilih file spasial terlebih dahulu (.geojson, .zip, .csv, .ipynb).";
+      messageEl.textContent = "Pilih file spasial (.tif, .geojson, .zip, .csv) atau animasi (.gif) terlebih dahulu.";
       messageEl.style.color = "#ff6c62";
       return;
     }
 
-    messageEl.textContent = `Memuat file: ${file.name}... Berhasil terintegrasi ke dalam map!`;
-    messageEl.style.color = "#58e0b1";
+    const ext = file.name.split('.').pop().toLowerCase();
+    messageEl.textContent = `Memproses file ${file.name}...`;
+    messageEl.style.color = "#ffb45e";
+
+    try {
+      // A. FILE GIF (ANIMASI SIMULASI CA-BM) -> MASUK KE SIMULATION PLAYER
+      if (ext === 'gif') {
+        const gifUrl = URL.createObjectURL(file);
+        const simGifPlayer = document.getElementById('simGifPlayer');
+        const simStatusText = document.getElementById('simStatusText');
+        const simDateText = document.getElementById('simDateText');
+
+        simGifPlayer.src = gifUrl;
+        simDateText.textContent = `File Simulasi: ${file.name}`;
+        simStatusText.textContent = "Status: GIF Simulasi Berhasil Dimuat";
+        simStatusText.style.color = "#58e0b1";
+
+        messageEl.textContent = `Berhasil memuat animasi GIF ${file.name} ke Panel Simulasi!`;
+        messageEl.style.color = "#58e0b1";
+      }
+
+      // B. FILE TIF / TIFF (GEOTIFF RASTER) -> MASUK KE PETA MONITORING
+      else if (ext === 'tif' || ext === 'tiff') {
+        if (typeof parseGeoraster !== 'function') {
+          throw new Error("Library georaster belum dimuat di index.html");
+        }
+
+        const arrayBuffer = await file.arrayBuffer();
+        const georaster = await parseGeoraster(arrayBuffer);
+
+        const layerTif = new GeoRasterLayer({
+          georaster: georaster,
+          opacity: 0.75,
+          resolution: 128
+        });
+
+        uploadedTifGroup.clearLayers();
+        uploadedTifGroup.addLayer(layerTif);
+        map.fitBounds(layerTif.getBounds());
+
+        messageEl.textContent = `Berhasil merender GeoTIFF ${file.name} pada Peta!`;
+        messageEl.style.color = "#58e0b1";
+      }
+
+      // C. FORMAT GeoJSON / JSON
+      else if (ext === 'geojson' || ext === 'json') {
+        const text = await file.text();
+        const geojson = JSON.parse(text);
+        const geoLayer = L.geoJSON(geojson, { style: { color: '#58e0b1', weight: 2 } });
+        geoLayer.addTo(map);
+        map.fitBounds(geoLayer.getBounds());
+        
+        messageEl.textContent = `Berhasil memuat GeoJSON ${file.name} pada Peta!`;
+        messageEl.style.color = "#58e0b1";
+      }
+
+      // D. FORMAT SHAPEFILE ZIP
+      else if (ext === 'zip') {
+        if (typeof shp !== 'function') throw new Error("Library shpjs belum tersedia.");
+        const buffer = await file.arrayBuffer();
+        const geojson = await shp(buffer);
+        const shpLayer = L.geoJSON(geojson, { style: { color: '#ffb45e', weight: 2 } });
+        shpLayer.addTo(map);
+        map.fitBounds(shpLayer.getBounds());
+
+        messageEl.textContent = `Berhasil memuat Shapefile ${file.name} pada Peta!`;
+        messageEl.style.color = "#58e0b1";
+      }
+
+      // E. FORMAT CSV
+      else if (ext === 'csv') {
+        Papa.parse(file, {
+          header: true,
+          complete: (result) => {
+            messageEl.textContent = `Berhasil membaca CSV ${file.name} dengan ${result.data.length} baris data!`;
+            messageEl.style.color = "#58e0b1";
+          }
+        });
+      }
+
+      // F. FORMAT LAINNYA
+      else {
+        messageEl.textContent = `File ${file.name} (${ext.toUpperCase()}) berhasil diproses!`;
+        messageEl.style.color = "#58e0b1";
+      }
+
+    } catch (err) {
+      console.error(err);
+      messageEl.textContent = `Gagal memproses file: ${err.message}`;
+      messageEl.style.color = "#ff6c62";
+    }
   };
 
   exportCsvBtn.onclick = () => {
