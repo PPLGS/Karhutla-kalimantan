@@ -1,6 +1,6 @@
 /* ============================================================
    KALIMANTAN FIRE INTELLIGENCE v2.0 - STYLESHEET
-   Dark Mode Responsive Layout Grid
+   Dark Mode UI untuk Folder-based WebGIS Dashboard
    ============================================================ */
 
 :root {
@@ -27,7 +27,7 @@ body {
   min-height: 100vh;
 }
 
-/* HEADER UTAMA */
+/* HEADER */
 .top {
   height: 72px;
   border-bottom: 1px solid var(--line);
@@ -70,14 +70,14 @@ body {
 .date { border: 1px solid var(--line); padding: 6px 12px; border-radius: 6px; background: var(--panel); }
 .wrap { max-width: 1600px; margin: auto; padding: 20px 24px 40px; }
 
-/* METRICS BAR */
+/* METRICS */
 .metrics { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 20px; }
 .metric { background: linear-gradient(145deg, #10232e, #0b1922); border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; }
 .metric label { font: 9px 'DM Mono', monospace; color: #7e9ba5; letter-spacing: 1.2px; }
 .metric strong { display: block; font-size: 24px; margin: 6px 0 2px; color: var(--mint); font-weight: 800; }
 .metric small { font-size: 10px; color: #78929c; }
 
-/* GRID DASHBOARD */
+/* GRID */
 .main-dashboard-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 20px; }
 .panel {
   background: linear-gradient(145deg, rgba(13, 29, 39, 0.95), rgba(10, 23, 32, 0.95));
@@ -107,7 +107,7 @@ body {
   border: 1px solid var(--line) !important; border-radius: 8px !important; padding: 8px 12px !important;
 }
 
-/* SIMULATION PLAYER */
+/* SIMULATION */
 .sim-container { padding: 16px; display: flex; flex-direction: column; gap: 12px; height: 100%; }
 .sim-screen {
   position: relative; width: 100%; height: 280px; background: #08131b;
