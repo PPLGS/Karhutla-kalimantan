@@ -21,7 +21,7 @@
       </div>
     </div>
     <div class="topright">
-      <span class="live">BMKG API CONNECTED</span>
+      <span class="live">LIVE DATA STREAM</span>
       <span class="status-text">KALIMANTAN REGION ON-STREAM</span>
       <div class="date" id="dateNow"></div>
     </div>
@@ -53,15 +53,15 @@
       </div>
     </section>
 
-    <!-- ARSITEKTUR UTAMA 4-PANEL DASHBOARD -->
+    <!-- ARSITEKTUR UTAMA DASHBOARD -->
     <section class="main-dashboard-grid">
 
-      <!-- PANEL 1: PETA SPASIAL INTERAKTIF (REAL-TIME) -->
+      <!-- PETA SPASIAL INTERAKTIF (REAL-TIME & RASTER TIF) -->
       <article class="panel panel-map">
         <div class="panel-head">
           <div>
-            <h3>Panel 1: Peta Monitoring Kebakaran Real-Time</h3>
-            <p>Visualisasi spasial titik api live, layer gambut, & grid dampak 1 km</p>
+            <h3>Peta Monitoring Kebakaran Real-Time & Raster</h3>
+            <p>Visualisasi spasial titik api live, layer gambut, grid 1km, & GeoTIFF (.tif)</p>
           </div>
           <div class="toolbar">
             <button class="btn primary" id="fitBtn">Zoom ke Kalimantan</button>
@@ -88,19 +88,19 @@
         <div id="map" class="map-area"></div>
       </article>
 
-      <!-- PANEL 2: SIMULASI PERGERAKAN API (PEMODELAN CA-BM) -->
+      <!-- SIMULASI PERGERAKAN API (GIF / PEMODELAN CA-BM) -->
       <article class="panel panel-simulation">
         <div class="panel-head">
           <div>
-            <h3>Panel 2: Simulasi Pemodelan Penyebaran Api</h3>
-            <p>Hasil model adveksi CA-BM puncak kejadian (1–7 Oktober)</p>
+            <h3>Simulasi Pemodelan Penyebaran Api</h3>
+            <p>Hasil model adveksi CA-BM puncak kejadian (GIF / Animasi 3-Hari)</p>
           </div>
           <span class="tag tag-sim">SIMULASI CA-BM</span>
         </div>
 
         <div class="sim-container">
           <div class="sim-screen" id="simScreen">
-            <img id="simGifPlayer" src="https://via.placeholder.com/600x350/0b1922/58e0b1?text=Klik+'Simulasikan'+untuk+memutar+animasi+adveksi+3+hari" alt="Simulasi Adveksi Api">
+            <img id="simGifPlayer" src="https://via.placeholder.com/600x350/0b1922/58e0b1?text=Unggah+file+.GIF+atau+klik+'Simulasikan'" alt="Simulasi Adveksi Api">
             <div class="sim-overlay-info">
               <span id="simDateText">Periode: 01 Okt 2026 - 07 Okt 2026</span>
               <span id="simStatusText">Status: Standby</span>
@@ -121,11 +121,11 @@
         </div>
       </article>
 
-      <!-- PANEL 3: ANALYTICS & PREDIKSI 3-HARI -->
+      <!-- ANALYTICS & PREDIKSI 3-HARI -->
       <article class="panel panel-analytics">
         <div class="panel-head">
           <div>
-            <h3>Panel 3: Grafik Analytics & Forecast Risk 3-Harian</h3>
+            <h3>Grafik Analytics & Forecast Risk 3-Harian</h3>
             <p>Tren kenaikan hotspot dan proyeksi tingkat risiko penyebaran</p>
           </div>
           <button class="btn" id="exportChartBtn">Export Data Prediksi</button>
@@ -135,11 +135,11 @@
         </div>
       </article>
 
-      <!-- PANEL 4: STREAMING PARAMETER CUACA & DATA ATRIBUT -->
+      <!-- STREAMING PARAMETER CUACA & DATA ATRIBUT -->
       <article class="panel panel-weather-attribute">
         <div class="panel-head">
           <div>
-            <h3>Panel 4: Live Weather Stream & Tabel Atribut</h3>
+            <h3>Live Weather Stream & Tabel Atribut</h3>
             <p>Parameter lingkungan real-time dan ringkasan data per provinsi</p>
           </div>
         </div>
@@ -183,16 +183,16 @@
 
     </section>
 
-    <!-- UPLOAD GIS PANEL (SUPPORT GEOJSON, CSV, SHP ZIP, IPYNB) -->
+    <!-- UPLOAD GIS PANEL (DUKUNGAN UTUH: GEOJSON, SHP ZIP, CSV, IPYNB, TIF, GIF) -->
     <article class="panel upload-panel">
       <div class="panel-head">
         <div>
-          <h3>+ Unggah Data GIS & Model (GeoJSON, SHP ZIP, CSV, IPYNB)</h3>
-          <p>Integrasi langsung file pengolahan spasial lokal ke dalam map & viewer</p>
+          <h3>+ Unggah Data GIS & Model (GeoJSON, SHP ZIP, CSV, IPYNB, TIF, GIF)</h3>
+          <p>Integrasi langsung file spasial (.tif ke Peta) & animasi (.gif ke Player Simulasi)</p>
         </div>
       </div>
       <div class="upload-controls">
-        <input type="file" id="fileInput" accept=".geojson,.json,.zip,.csv,.ipynb,.tif,.tiff">
+        <input type="file" id="fileInput" accept=".geojson,.json,.zip,.csv,.ipynb,.tif,.tiff,.gif">
         <button class="btn primary" id="loadBtn">Proses & Muat Data</button>
         <button class="btn" id="exportCsvBtn">Ekspor Ringkasan CSV</button>
       </div>
@@ -204,10 +204,17 @@
     </footer>
   </main>
 
-  <!-- LIBRARIES & SCRIPT -->
+  <!-- LIBRARIES -->
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <!-- Library GeoTIFF Raster -->
+  <script src="https://unpkg.com/georaster"></script>
+  <script src="https://unpkg.com/georaster-layer-for-leaflet/dist/georaster-layer-for-leaflet.min.js"></script>
+  <!-- Library Shapefile ZIP & CSV -->
+  <script src="https://cdn.jsdelivr.net/npm/shpjs@latest/dist/shp.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+  <!-- Library Chart.js -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <!-- App JS Logic -->
   <script src="app.js"></script>
 </body>
 </html>
