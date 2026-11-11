@@ -1,5 +1,6 @@
 // ============================================================
-// KALIMANTAN FIRE INTELLIGENCE v2.0 - FULL CONSOLIDATED APP.JS
+// KALIMANTAN FIRE INTELLIGENCE v2.0 - FULL FIX APP.JS
+// Resolved: GIF Freeze/Disappear when toggling scenarios
 // ============================================================
 
 let map;
@@ -15,10 +16,10 @@ document.addEventListener('DOMContentLoaded', () => {
   initMap();
   initSimulation();
 
-  // Render grafik langsung saat awal load agar dijamin tampil 100%
+  // Render grafik default secepatnya agar dijamin tampil saat awal load
   renderDefaultChart();
 
-  // Muat data spasial & CSV dari folder /data
+  // Load data spasial & CSV dari folder /data
   loadDashboardData();
 });
 
@@ -61,7 +62,7 @@ function initMap() {
   document.getElementById('resetBtn').onclick = () => map.setView([-1.5, 114.0], 6);
 }
 
-// Helper Fetch Vector (.json / .geojson)
+// Helper Fetch Vector Layer
 async function fetchVectorLayer(fileNameWithoutExt) {
   const paths = [
     `./data/${fileNameWithoutExt}.json`,
@@ -121,7 +122,7 @@ async function loadDashboardData() {
     })
     .catch(() => {});
 
-  // E. CSV Indikator Harian -> Update Chart
+  // E. CSV Indikator Harian
   Papa.parse('./data/01_Indikator_Kebakaran_Harian.csv', {
     download: true,
     header: true,
@@ -131,7 +132,7 @@ async function loadDashboardData() {
     }
   });
 
-  // F. CSV Ringkasan Simulasi -> Update Tabel
+  // F. CSV Ringkasan Simulasi
   Papa.parse('./data/03_Ringkasan_Simulasi.csv', {
     download: true,
     header: true,
@@ -142,7 +143,7 @@ async function loadDashboardData() {
   });
 }
 
-// 4. SIMULATION PLAYER (DUAL SKENARIO: GIF & CANVAS)
+// 4. SIMULATION PLAYER (DENGAN FIX RESET DOM GIF)
 function initSimulation() {
   const btnRun = document.getElementById('btnRunSimulation');
   const simGifPlayer = document.getElementById('simGifPlayer');
@@ -151,18 +152,10 @@ function initSimulation() {
   const simDateText = document.getElementById('simDateText');
   const simDateFilter = document.getElementById('simDateFilter');
 
-  const gifPath = './assets/Animasi_CA_ABM_Kalimantan_30_Hari.gif';
-
-  // Set ketersediaan elemen GIF awal
-  if (simGifPlayer) {
-    simGifPlayer.src = gifPath;
-    simGifPlayer.onerror = () => {
-      simGifPlayer.src = 'assets/Animasi_CA_ABM_Kalimantan_30_Hari.gif';
-    };
-  }
+  const baseGifPath = 'assets/Animasi_CA_ABM_Kalimantan_30_Hari.gif';
 
   btnRun?.addEventListener('click', () => {
-    // Stop timer raster jika simulasi sedang berjalan
+    // 1. Hentikan timer raster Skenario 2 jika sedang berjalan
     if (rasterSimulationTimer) {
       clearInterval(rasterSimulationTimer);
       rasterSimulationTimer = null;
@@ -171,12 +164,18 @@ function initSimulation() {
     const mode = simDateFilter.value;
 
     if (mode === '30-day-gif') {
-      // SKENARIO 1: MEMUTAR ANIMASI GIF
+      // SKENARIO 1: MEMUTAR ANIMASI GIF (DENGAN FORCE RE-RENDER)
       simCanvas.style.display = 'none';
-      simGifPlayer.style.display = 'block';
 
-      // Reset src agar animasi GIF diputar ulang dari awal
-      simGifPlayer.src = gifPath;
+      // Reset DOM untuk memaksa browser memuat ulang GIF dari frame awal
+      simGifPlayer.style.display = 'none';
+      simGifPlayer.src = '';
+
+      setTimeout(() => {
+        simGifPlayer.style.display = 'block';
+        // Tambahkan timestamp unik agar browser tidak memakai cache frozen
+        simGifPlayer.src = `${baseGifPath}?t=${Date.now()}`;
+      }, 50);
 
       simDateText.textContent = "Skenario: Animasi CA-BM 30 Hari (.gif)";
       simStatusText.textContent = "Status: Memutar Animasi Simulasi CA-BM";
