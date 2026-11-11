@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Kalimantan Fire Intelligence v2.0 | Dashboard Real-Time & Simulasi</title>
+  <title>Kalimantan Fire Intelligence v2.0 | Automated WebGIS</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
@@ -32,36 +32,36 @@
     <!-- METRICS BAR RINGKASAN STATUS -->
     <section class="metrics">
       <div class="metric">
-        <label>TITIK API REAL-TIME (BMKG)</label>
-        <strong id="hotspotCount">142</strong>
-        <small>Terhubung live data Kalimantan</small>
+        <label>TITIK API AKTIF</label>
+        <strong id="hotspotCount">Memuat...</strong>
+        <small>Data Otomatis GitHub Releases</small>
       </div>
       <div class="metric">
         <label>ESTIMASI LUAS TERBAKAR</label>
-        <strong id="burnedArea">1,240 ha</strong>
-        <small>Kalkulasi spasial otomatis</small>
+        <strong id="burnedArea">Memuat...</strong>
+        <small>Kalkulasi Spasial Poligon</small>
       </div>
       <div class="metric">
         <label>STATUS LAHAN GAMBUT</label>
         <strong id="peatStatus">WASPADA (82%)</strong>
-        <small>Layer kelembapan tanah gambut</small>
+        <small>Monitoring Kelembapan</small>
       </div>
       <div class="metric">
         <label>KECEPATAN ANGIN RATA-RATA</label>
         <strong id="windSpeed">18 km/j (NW)</strong>
-        <small>Streaming cuaca real-time</small>
+        <small>Streaming Cuaca Real-Time</small>
       </div>
     </section>
 
     <!-- ARSITEKTUR UTAMA DASHBOARD -->
     <section class="main-dashboard-grid">
 
-      <!-- PETA SPASIAL INTERAKTIF (REAL-TIME & RASTER TIF) -->
+      <!-- PETA SPASIAL INTERAKTIF (LEAFLET + GEOTIFF) -->
       <article class="panel panel-map">
         <div class="panel-head">
           <div>
             <h3>Peta Monitoring Kebakaran Real-Time & Raster</h3>
-            <p>Visualisasi spasial titik api live, layer gambut, grid 1km, & GeoTIFF (.tif)</p>
+            <p>Visualisasi spasial GeoJSON & GeoTIFF otomatis dari GitHub Releases</p>
           </div>
           <div class="toolbar">
             <button class="btn primary" id="fitBtn">Zoom ke Kalimantan</button>
@@ -72,48 +72,52 @@
         <!-- Layer Control Switcher -->
         <div class="layer-control-bar">
           <label class="layer-chk">
-            <input type="checkbox" id="chkLiveHotspot" checked>
-            <span class="badge badge-red">● Titik Api Live (BMKG)</span>
+            <input type="checkbox" id="chkAdminBoundary" checked>
+            <span class="badge badge-purple">■ Batas Administrasi</span>
           </label>
           <label class="layer-chk">
-            <input type="checkbox" id="chkPeatland" checked>
-            <span class="badge badge-amber">■ Peta Lahan Gambut</span>
+            <input type="checkbox" id="chkActiveFires" checked>
+            <span class="badge badge-red">● Api Aktif (GeoJSON)</span>
           </label>
           <label class="layer-chk">
-            <input type="checkbox" id="chkGeoGrid" checked>
-            <span class="badge badge-purple">▧ Grid Dampak 1km (GeoJSON)</span>
+            <input type="checkbox" id="chkBurnedArea" checked>
+            <span class="badge badge-amber">■ Poligon Area Terbakar</span>
+          </label>
+          <label class="layer-chk">
+            <input type="checkbox" id="chkGeoTiff" checked>
+            <span class="badge badge-blue">▧ Raster GeoTIFF (.tif)</span>
           </label>
         </div>
 
         <div id="map" class="map-area"></div>
       </article>
 
-      <!-- SIMULASI PERGERAKAN API (GIF / PEMODELAN CA-BM) -->
+      <!-- SIMULASI PERGERAKAN API (GIF RELEASE AUTOMATION) -->
       <article class="panel panel-simulation">
         <div class="panel-head">
           <div>
-            <h3>Simulasi Pemodelan Penyebaran Api</h3>
-            <p>Hasil model adveksi CA-BM puncak kejadian (GIF / Animasi 3-Hari)</p>
+            <h3>Simulasi Pemodelan Penyebaran Api (CA-BM)</h3>
+            <p>Hasil pemodelan adveksi 30 hari otomatis diputar dari GitHub Assets</p>
           </div>
           <span class="tag tag-sim">SIMULASI CA-BM</span>
         </div>
 
         <div class="sim-container">
           <div class="sim-screen" id="simScreen">
-            <img id="simGifPlayer" src="https://via.placeholder.com/600x350/0b1922/58e0b1?text=Unggah+file+.GIF+atau+klik+'Simulasikan'" alt="Simulasi Adveksi Api">
+            <canvas id="simCanvas" width="600" height="350" style="display:none;"></canvas>
+            <img id="simGifPlayer" src="" alt="Simulasi Animasi CA-BM" style="display:block;">
             <div class="sim-overlay-info">
-              <span id="simDateText">Periode: 01 Okt 2026 - 07 Okt 2026</span>
+              <span id="simDateText">Skenario: Animasi CA-BM 30 Hari</span>
               <span id="simStatusText">Status: Standby</span>
             </div>
           </div>
 
           <div class="sim-controls">
             <div class="filter-group">
-              <label>PILIH PERIODE PREDIKSI:</label>
+              <label>PILIH SKENARIO SIMULASI:</label>
               <select id="simDateFilter" class="sim-select">
-                <option value="oct-peak">Puncak Karhutla (1-7 Oktober)</option>
-                <option value="oct-mid">Pertengahan Oktober</option>
-                <option value="nov-current">Skenario Musim Kering</option>
+                <option value="30-day-gif">Animasi CA-BM 30 Hari (.gif)</option>
+                <option value="raster-interval">Iterasi Raster CA-BM (Interval 5x5)</option>
               </select>
             </div>
             <button class="btn primary btn-sim" id="btnRunSimulation">▶ Simulasikan Pergerakan Api</button>
@@ -121,26 +125,26 @@
         </div>
       </article>
 
-      <!-- ANALYTICS & PREDIKSI 3-HARI -->
+      <!-- ANALYTICS & PREDIKSI -->
       <article class="panel panel-analytics">
         <div class="panel-head">
           <div>
-            <h3>Grafik Analytics & Forecast Risk 3-Harian</h3>
-            <p>Tren kenaikan hotspot dan proyeksi tingkat risiko penyebaran</p>
+            <h3>Grafik Analytics & Indikator Harian</h3>
+            <p>Tren kenaikan hotspot & hasil simulasi dari file CSV GitHub Releases</p>
           </div>
-          <button class="btn" id="exportChartBtn">Export Data Prediksi</button>
+          <button class="btn" id="exportChartBtn">Export Data CSV</button>
         </div>
         <div class="chart-wrap">
           <canvas id="forecastChart"></canvas>
         </div>
       </article>
 
-      <!-- STREAMING PARAMETER CUACA & DATA ATRIBUT -->
+      <!-- STREAMING PARAMETER CUACA & TABEL ATRIBUT -->
       <article class="panel panel-weather-attribute">
         <div class="panel-head">
           <div>
-            <h3>Live Weather Stream & Tabel Atribut</h3>
-            <p>Parameter lingkungan real-time dan ringkasan data per provinsi</p>
+            <h3>Live Weather Stream & Ringkasan Simulasi</h3>
+            <p>Ringkasan otomatis diproses langsung dari file CSV GitHub</p>
           </div>
         </div>
 
@@ -168,14 +172,13 @@
           <table>
             <thead>
               <tr>
-                <th>PROVINSI</th>
-                <th>HOTSPOT LIVE</th>
-                <th>RISIKO GAMBUT</th>
-                <th>ESTIMASI LUAS</th>
+                <th>METRIK SIMULASI</th>
+                <th>NILAI HASIL</th>
+                <th>KETERANGAN DATA</th>
               </tr>
             </thead>
             <tbody id="dataRows">
-              <!-- Baris data diisi otomatis oleh app.js -->
+              <tr><td colspan="3">Memuat data dari GitHub Releases...</td></tr>
             </tbody>
           </table>
         </div>
@@ -183,38 +186,20 @@
 
     </section>
 
-    <!-- UPLOAD GIS PANEL (DUKUNGAN UTUH: GEOJSON, SHP ZIP, CSV, IPYNB, TIF, GIF) -->
-    <article class="panel upload-panel">
-      <div class="panel-head">
-        <div>
-          <h3>+ Unggah Data GIS & Model (GeoJSON, SHP ZIP, CSV, IPYNB, TIF, GIF)</h3>
-          <p>Integrasi langsung file spasial (.tif ke Peta) & animasi (.gif ke Player Simulasi)</p>
-        </div>
-      </div>
-      <div class="upload-controls">
-        <input type="file" id="fileInput" accept=".geojson,.json,.zip,.csv,.ipynb,.tif,.tiff,.gif">
-        <button class="btn primary" id="loadBtn">Proses & Muat Data</button>
-        <button class="btn" id="exportCsvBtn">Ekspor Ringkasan CSV</button>
-      </div>
-      <div id="message" class="status"></div>
-    </article>
-
     <footer>
-      KALIMANTAN FIRE INTELLIGENCE v2.0 &copy; 2026 — 3D & REAL-TIME SPATIAL ANALYTICS SYSTEM
+      KALIMANTAN FIRE INTELLIGENCE v2.0 &copy; 2026 — AUTOMATED GITHUB RELEASES WEBGIS PLATFORM
     </footer>
   </main>
 
   <!-- LIBRARIES -->
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-  <!-- Library GeoTIFF Raster -->
+  <!-- GeoTIFF Raster Support -->
   <script src="https://unpkg.com/georaster"></script>
   <script src="https://unpkg.com/georaster-layer-for-leaflet/dist/georaster-layer-for-leaflet.min.js"></script>
-  <!-- Library Shapefile ZIP & CSV -->
-  <script src="https://cdn.jsdelivr.net/npm/shpjs@latest/dist/shp.js"></script>
+  <!-- CSV Parser & Chart.js -->
   <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
-  <!-- Library Chart.js -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <!-- App JS Logic -->
+  <!-- Main App Script -->
   <script src="app.js"></script>
 </body>
 </html>
