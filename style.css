@@ -1,6 +1,6 @@
 /* ============================================================
    KALIMANTAN FIRE INTELLIGENCE v2.0 - DASHBOARD STYLESHEET
-   4-Panel Modular Grid Architecture
+   Modular Layout Grid Architecture & Dark Mode Theme
    ============================================================ */
 
 :root {
@@ -151,7 +151,7 @@ body {
   color: #78929c;
 }
 
-/* DASHBOARD 4-PANEL LAYOUT GRID */
+/* DASHBOARD LAYOUT GRID */
 .main-dashboard-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -190,7 +190,7 @@ body {
   margin: 0;
 }
 
-/* PANEL 1: LEAFLET MAP & LAYER SWITCHER */
+/* LEAFLET MAP & LAYER SWITCHER */
 .layer-control-bar {
   display: flex;
   gap: 10px;
@@ -225,7 +225,26 @@ body {
   width: 100%;
 }
 
-/* PANEL 2: PLAYER SIMULASI */
+/* STYLING KONTROL LEAFLET BASEMAP SWITCHER */
+.leaflet-control-layers {
+  background: rgba(12, 26, 36, 0.95) !important;
+  color: var(--text) !important;
+  border: 1px solid var(--line) !important;
+  border-radius: 8px !important;
+  padding: 8px 12px !important;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.4) !important;
+  font-size: 11px !important;
+}
+
+.leaflet-control-layers-base label {
+  display: flex !important;
+  align-items: center !important;
+  gap: 6px !important;
+  margin-bottom: 4px !important;
+  cursor: pointer !important;
+}
+
+/* PLAYER SIMULASI */
 .sim-container {
   padding: 16px;
   display: flex;
@@ -295,13 +314,13 @@ body {
   font-size: 11px;
 }
 
-/* PANEL 3: ANALYTICS CHART */
+/* ANALYTICS CHART */
 .chart-wrap {
   height: 320px;
   padding: 16px;
 }
 
-/* PANEL 4: WEATHER & TABLE */
+/* WEATHER & TABLE */
 .weather-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
