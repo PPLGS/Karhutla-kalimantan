@@ -152,3 +152,22 @@ footer { font: 10px 'DM Mono', monospace; color: #55717c; text-align: center; pa
   .main-dashboard-grid { grid-template-columns: 1fr; }
   .metrics { grid-template-columns: repeat(2, 1fr); }
 }
+
+/* FIX DIMENSI CANVAS SIMULASI & GRAFIK */
+#simCanvas {
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: contain;
+}
+
+.chart-wrap {
+  position: relative;
+  width: 100%;
+  height: 300px;
+  padding: 12px;
+}
+
+#forecastChart {
+  width: 100% !important;
+  height: 100% !important;
+}
