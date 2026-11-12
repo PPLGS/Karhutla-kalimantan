@@ -1,6 +1,6 @@
 // ============================================================
 // KALIMANTAN FIRE INTELLIGENCE v2.0 - FULL PRODUCTION APP.JS
-// Integrasi: NASA FIRMS Live + Historis 30 Hari, BMKG Live, & CA-ABM
+// Integrasi: NASA FIRMS Live + Historis 10 Hari, BMKG Live, & CA-ABM
 // ============================================================
 
 const DEFAULT_NASA_FIRMS_KEY = "4f37c06e7146c0a2458922a929fff642";
@@ -13,7 +13,7 @@ let layerGeoTiff = null;
 let forecastChartInstance = null;
 let rasterSimulationTimer = null;
 
-// Penyimpanan Global Data Hotspot (24 Jam & Historis)
+// Penyimpanan Global Data Hotspot (24 Jam & Historis 10 Hari)
 let satelliteStore = {
   today24h: [],
   historicalAll: [],
@@ -274,7 +274,7 @@ function degToCompass(num) {
 }
 
 // ============================================================
-// 4. REAL-TIME & HISTORIS TITIK API SATELIT (NASA FIRMS 30 HARI)
+// 4. REAL-TIME & HISTORIS TITIK API SATELIT (NASA FIRMS 10 HARI)
 // ============================================================
 function initFirmsKeyButton() {
   const btn = document.getElementById('btnFirmsKey');
@@ -310,11 +310,11 @@ function parseCSVSimple(csvText) {
   });
 }
 
-async function fetchFirmsAreaCSV(firmsKey, sensorName, dayRange, startDate = "") {
-  const datePart = startDate ? `/${startDate}` : "";
-  const url = `https://firms.modaps.eosdis.nasa.gov/api/area/csv/${encodeURIComponent(firmsKey)}/${sensorName}/108,-4.5,119,4.5/${dayRange}${datePart}`;
+async function fetchFirmsAreaCSV(firmsKey, sensorName, dayRange) {
+  const url = `https://firms.modaps.eosdis.nasa.gov/api/area/csv/${encodeURIComponent(firmsKey)}/${sensorName}/108,-4.5,119,4.5/${dayRange}`;
   try {
-    const res = await fetchWithTimeout(url, 8500);
+    // Batas waktu 20 detik agar unduhan CSV 10 hari seluruh Kalimantan tidak terputus
+    const res = await fetchWithTimeout(url, 20000);
     if (!res.ok) return [];
     const csvText = await res.text();
     if (csvText.includes('Invalid MAP_KEY') || csvText.includes('Error')) return [];
@@ -335,7 +335,7 @@ async function loadRealtimeAndHistoricalHotspots() {
     fetchFirmsAreaCSV(firmsKey, 'VIIRS_NOAA21_NRT', 10)
   ]);
 
-  if (nrt10dPts.length === 0) {
+  if (todayPts.length === 0 && nrt10dPts.length === 0) {
     sensorUsed = 'NOAA-20 VIIRS 375m';
     [todayPts, nrt10dPts] = await Promise.all([
       fetchFirmsAreaCSV(firmsKey, 'VIIRS_NOAA20_NRT', 1),
@@ -343,24 +343,15 @@ async function loadRealtimeAndHistoricalHotspots() {
     ]);
   }
 
-  const date20Ago = formatDateUTC(-20);
-  const date30Ago = formatDateUTC(-30);
-  const spSensor = sensorUsed.includes('NOAA-21') ? 'VIIRS_NOAA21_SP' : 'VIIRS_NOAA20_SP';
-
-  const [spMidPts, spOldPts] = await Promise.all([
-    fetchFirmsAreaCSV(firmsKey, spSensor, 10, date20Ago),
-    fetchFirmsAreaCSV(firmsKey, spSensor, 10, date30Ago)
-  ]);
-
+  // Gabungkan data 10 hari & 24 jam tanpa duplikat
   const uniqueMap = new Map();
-  [...spOldPts, ...spMidPts, ...nrt10dPts, ...todayPts].forEach(pt => {
+  [...nrt10dPts, ...todayPts].forEach(pt => {
     const key = `${pt.latitude}_${pt.longitude}_${pt.acq_date}_${pt.acq_time}`;
     uniqueMap.set(key, pt);
   });
 
   const allHistorical = Array.from(uniqueMap.values());
-  const has30DayArchive = spMidPts.length > 0 || spOldPts.length > 0;
-  const windowDays = has30DayArchive ? 30 : 10;
+  const windowDays = 10;
 
   const countsByDate = {};
   allHistorical.forEach(pt => {
@@ -384,28 +375,33 @@ async function loadRealtimeAndHistoricalHotspots() {
     sensorName: sensorUsed
   };
 
+  // Bandingkan Hari Ini (24 jam) terhadap 9 hari sebelumnya (H-1 s.d. H-9)
   const todayCount = todayPts.length;
   const totalHistCount = allHistorical.length;
-  const avgDailyHist = totalHistCount / windowDays;
+  const prev9DaysCount = Math.max(0, totalHistCount - todayCount);
+  const avgPrevDaily = prev9DaysCount / (windowDays - 1);
   const peakDayObj = dailySeries.reduce((max, cur) => (cur.count > max.count ? cur : max), { date: '-', count: 0 });
 
   const trendBadgeEl = document.getElementById('hotspotTrendBadge');
   if (trendBadgeEl) {
-    if (avgDailyHist > 0) {
-      const diffPct = Math.round(((todayCount - avgDailyHist) / avgDailyHist) * 100);
+    if (prev9DaysCount === 0 && todayCount > 0) {
+      trendBadgeEl.className = 'trend-pill trend-worsening';
+      trendBadgeEl.textContent = `↗ MUNCUL BARU (0 titik di 9h lalu)`;
+    } else if (prev9DaysCount === 0 && todayCount === 0) {
+      trendBadgeEl.className = 'trend-pill trend-improving';
+      trendBadgeEl.textContent = `↘ KONDUSIF (0 titik dalam 10h)`;
+    } else {
+      const diffPct = Math.round(((todayCount - avgPrevDaily) / avgPrevDaily) * 100);
       if (diffPct <= -5) {
         trendBadgeEl.className = 'trend-pill trend-improving';
-        trendBadgeEl.textContent = `↘ MEMBAIK (${Math.abs(diffPct)}% vs rata-rata ${windowDays}h)`;
+        trendBadgeEl.textContent = `↘ MEMBAIK (${Math.abs(diffPct)}% vs rata-rata 9h lalu)`;
       } else if (diffPct >= 5) {
         trendBadgeEl.className = 'trend-pill trend-worsening';
-        trendBadgeEl.textContent = `↗ MENINGKAT (+${diffPct}% vs rata-rata ${windowDays}h)`;
+        trendBadgeEl.textContent = `↗ MENINGKAT (+${diffPct}% vs rata-rata 9h lalu)`;
       } else {
         trendBadgeEl.className = 'trend-pill trend-neutral';
-        trendBadgeEl.textContent = `→ STABIL (rata-rata ${Math.round(avgDailyHist)}/hari)`;
+        trendBadgeEl.textContent = `→ STABIL (rata-rata ${avgPrevDaily.toFixed(1)}/hari)`;
       }
-    } else {
-      trendBadgeEl.className = 'trend-pill trend-improving';
-      trendBadgeEl.textContent = `↘ KONDUSIF (0 titik historis)`;
     }
   }
 
@@ -414,7 +410,7 @@ async function loadRealtimeAndHistoricalHotspots() {
 
   const subEl = document.getElementById('hotspotSourceSub');
   if (subEl) {
-    subEl.textContent = `Total ${windowDays}h: ${totalHistCount.toLocaleString('id-ID')} titik (Rata-rata ${avgDailyHist.toFixed(1)}/hari • Puncak ${peakDayObj.count})`;
+    subEl.textContent = `Total 10h: ${totalHistCount.toLocaleString('id-ID')} titik (9h lalu: ${prev9DaysCount} • Puncak ${peakDayObj.count}/hari)`;
   }
 
   const estAreaHa = Math.round(todayCount * 14.0625);
@@ -423,7 +419,7 @@ async function loadRealtimeAndHistoricalHotspots() {
 
   const burnedSubEl = document.getElementById('burnedSourceSub');
   if (burnedSubEl) {
-    burnedSubEl.textContent = `Estimasi 24j (${todayCount} × 14,1 ha) • Total ${windowDays}h: ${Math.round(totalHistCount * 14.0625).toLocaleString('id-ID')} ha`;
+    burnedSubEl.textContent = `Estimasi 24j (${todayCount} × 14,1 ha) • Total 10h: ${Math.round(totalHistCount * 14.0625).toLocaleString('id-ID')} ha`;
   }
 
   const selectedDays = parseInt(document.getElementById('hotspotRangeFilter')?.value || '1', 10);
@@ -458,7 +454,7 @@ function renderHotspotsOnMap(days) {
   }
 
   const todayStr = formatDateUTC(0);
-  const weekCutoffStr = formatDateUTC(-6);
+  const threeDaysCutoffStr = formatDateUTC(-3);
 
   pointsToRender.forEach(pt => {
     const lat = parseFloat(pt.latitude);
@@ -466,16 +462,16 @@ function renderHotspotsOnMap(days) {
 
     let fillColor = '#ffd60a';
     let strokeColor = '#ffffff';
-    let ageLabel = 'Arsip Historis (8–30 Hari)';
+    let ageLabel = 'Historis (5–10 Hari Lalu)';
 
     if (pt.acq_date >= todayStr || days === 1) {
       fillColor = '#ff3b30';
       strokeColor = '#ffd60a';
       ageLabel = 'Aktif Terbaru (24 Jam)';
-    } else if (pt.acq_date >= weekCutoffStr) {
+    } else if (pt.acq_date >= threeDaysCutoffStr) {
       fillColor = '#ff9500';
       strokeColor = '#ffffff';
-      ageLabel = 'Historis (2–7 Hari Lalu)';
+      ageLabel = 'Historis (2–4 Hari Lalu)';
     }
 
     const marker = L.circleMarker([lat, lon], {
@@ -839,7 +835,7 @@ function renderHistoricalSatelliteChart() {
         },
         {
           type: 'line',
-          label: `Rata-rata Historis (${avgVal.toFixed(1)} titik/hari)`,
+          label: `Rata-rata 10 Hari (${avgVal.toFixed(1)} titik/hari)`,
           data: avgLine,
           borderColor: '#ffb45e',
           borderDash: [5, 5],
