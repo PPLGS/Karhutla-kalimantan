@@ -1,9 +1,9 @@
 // ============================================================
-// KALIMANTAN FIRE INTELLIGENCE v2.0 - BMKG, SATELLITE & CA-ABM
+// KALIMANTAN FIRE INTELLIGENCE v2.0 - FULL PRODUCTION APP.JS
+// Integrasi: NASA FIRMS NOAA-21/20 Live, BMKG Live, & CA-ABM
 // ============================================================
 
-// Opsional: Tempel MAP_KEY gratis dari https://firms.modaps.eosdis.nasa.gov/api/
-const DEFAULT_NASA_FIRMS_KEY = "";
+const DEFAULT_NASA_FIRMS_KEY = "4f37c06e7146c0a2458922a929fff642";
 
 let map;
 let layerAdminBoundary = L.layerGroup();
@@ -13,7 +13,7 @@ let layerGeoTiff = L.layerGroup();
 let forecastChartInstance = null;
 let rasterSimulationTimer = null;
 
-// State Zoom & Pan untuk Layar Simulasi
+// State Zoom & Pan untuk Layar Simulasi CA-ABM
 let simZoomState = {
   scale: 1,
   panX: 0,
@@ -29,11 +29,12 @@ document.addEventListener('DOMContentLoaded', () => {
   initSimulation();
   initSimulationZoom();
   initFirmsKeyButton();
+  initExportCsvButton();
 
-  // Render grafik analytics harian
+  // Render grafik analytics harian segera
   renderDefaultChart();
 
-  // Jalankan streaming API Real-Time BMKG & Satelit + layer lokal
+  // Jalankan streaming API Real-Time BMKG & Satelit NASA FIRMS + layer model lokal
   loadRealtimeBMKGWeather();
   loadRealtimeSatelliteHotspots();
   loadLocalModelLayers();
@@ -80,8 +81,6 @@ function initMap() {
 // 3. REAL-TIME CUACA & KELEMBAPAN GAMBUT (API DATA TERBUKA BMKG)
 // ============================================================
 async function loadRealtimeBMKGWeather() {
-  // Kode wilayah adm4 representatif Kalimantan di API Publik BMKG:
-  // Palangka Raya (Kalteng), Pontianak (Kalbar), Banjarmasin (Kalsel), Samarinda (Kaltim)
   const adm4Codes = [
     { name: 'Palangka Raya', code: '62.71.01.1001' },
     { name: 'Pontianak', code: '61.71.01.1001' },
@@ -117,7 +116,6 @@ async function loadRealtimeBMKGWeather() {
     let sumRain = 0;
     let sumWindSpeed = 0;
     let sumWindDeg = 0;
-    let lastWindDirText = 'SE';
 
     validForecasts.forEach(slot => {
       sumHumidity += parseFloat(slot.hu ?? 70);
@@ -125,7 +123,6 @@ async function loadRealtimeBMKGWeather() {
       sumRain += parseFloat(slot.tp ?? 0);
       sumWindSpeed += parseFloat(slot.ws ?? 10);
       sumWindDeg += parseFloat(slot.wd_deg ?? 135);
-      if (slot.wd) lastWindDirText = slot.wd;
     });
 
     const n = validForecasts.length;
@@ -136,7 +133,7 @@ async function loadRealtimeBMKGWeather() {
     const compassDir = validForecasts[0].wd || degToCompass(Math.round(sumWindDeg / n));
     const oppositeDir = validForecasts[0].wd_to || degToCompass((Math.round(sumWindDeg / n) + 180) % 360);
 
-    // Hitung Indeks Kekeringan Lahan Gambut dari Kelembapan Udara (hu), Suhu (t), dan Curah Hujan (tp) BMKG
+    // Hitung Indeks Kekeringan Lahan Gambut dari parameter RH, Suhu, & Curah Hujan BMKG
     const drynessScore = Math.min(
       100,
       Math.max(10, Math.round((100 - avgHumidity) * 0.75 + (parseFloat(avgTemp) - 22) * 2.2 - parseFloat(avgRain) * 3))
@@ -152,7 +149,6 @@ async function loadRealtimeBMKGWeather() {
       peatColor = '#ffb45e';
     }
 
-    // Update Kartu Atas #3 & #4
     const peatEl = document.getElementById('peatStatus');
     if (peatEl) {
       peatEl.textContent = peatLabel;
@@ -163,7 +159,6 @@ async function loadRealtimeBMKGWeather() {
     document.getElementById('windSpeed').textContent = `${avgWindSpeed} km/j (${compassDir})`;
     document.getElementById('windSourceSub').textContent = `Sumber: Data Terbuka BMKG Live`;
 
-    // Update Panel Cuaca Kanan Bawah
     document.getElementById('valHumidity').textContent = `${avgHumidity}%`;
     document.getElementById('subHumidity').textContent = avgHumidity < 65 ? 'Potensi Kering: Tinggi (BMKG)' : 'Kelembapan Relatif Normal (BMKG)';
 
@@ -175,14 +170,13 @@ async function loadRealtimeBMKGWeather() {
 
     const timeNow = new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
     document.getElementById('weatherTimestamp').textContent = `Data Terbuka BMKG Kalimantan • Update ${timeNow} WIB`;
-    document.getElementById('apiSyncStatus').textContent = `BMKG & SATELIT LIVE (${timeNow} WIB)`;
+    document.getElementById('apiSyncStatus').textContent = `BMKG & NASA FIRMS LIVE (${timeNow} WIB)`;
   } catch (err) {
     console.warn('BMKG fallback ke Open-Meteo:', err);
     loadFallbackOpenMeteoWeather();
   }
 }
 
-// Cadangan Otomatis jika API BMKG sedang timeout
 async function loadFallbackOpenMeteoWeather() {
   const url = 'https://api.open-meteo.com/v1/forecast?latitude=-2.21,-0.02,-3.31,-0.50&longitude=113.92,109.34,114.59,117.15&current=relative_humidity_2m,precipitation,wind_speed_10m,wind_direction_10m&timezone=Asia%2FJakarta';
   try {
@@ -218,21 +212,32 @@ function degToCompass(num) {
 }
 
 // ============================================================
-// 4. REAL-TIME TITIK API SATELIT (NASA FIRMS & NASA EONET v3)
+// 4. REAL-TIME TITIK API SATELIT (NASA FIRMS NOAA-21 & NOAA-20)
 // ============================================================
 function initFirmsKeyButton() {
   const btn = document.getElementById('btnFirmsKey');
   btn?.addEventListener('click', () => {
     const currentKey = localStorage.getItem('nasa_firms_map_key') || DEFAULT_NASA_FIRMS_KEY;
     const input = prompt(
-      "Masukkan NASA FIRMS MAP_KEY gratis kamu untuk menarik piksel hotspot VIIRS 375m Kalimantan secara real-time (kosongkan untuk memakai NASA EONET otomatis):",
+      "MAP_KEY NASA FIRMS aktif saat ini:",
       currentKey
     );
-    if (input !== null) {
+    if (input !== null && input.trim() !== "") {
       localStorage.setItem('nasa_firms_map_key', input.trim());
       loadRealtimeSatelliteHotspots();
     }
   });
+}
+
+async function fetchFirmsSensor(firmsKey, sensorName) {
+  // Bounding box Pulau Kalimantan: West=108, South=-4.5, East=119, North=4.5, Rentang=1 hari (24 jam)
+  const url = `https://firms.modaps.eosdis.nasa.gov/api/area/csv/${encodeURIComponent(firmsKey)}/${sensorName}/108,-4.5,119,4.5/1`;
+  const res = await fetch(url);
+  if (!res.ok) return [];
+  const csvText = await res.text();
+  if (csvText.includes('Invalid MAP_KEY') || csvText.includes('Error')) return [];
+  const parsed = Papa.parse(csvText, { header: true, skipEmptyLines: true });
+  return (parsed.data || []).filter(r => r.latitude && r.longitude);
 }
 
 async function loadRealtimeSatelliteHotspots() {
@@ -241,49 +246,52 @@ async function loadRealtimeSatelliteHotspots() {
 
   if (firmsKey) {
     try {
-      const firmsUrl = `https://firms.modaps.eosdis.nasa.gov/api/area/csv/${encodeURIComponent(firmsKey)}/VIIRS_SNPP_NRT/108,-4.5,119,4.5/1`;
-      const res = await fetch(firmsUrl);
-      if (res.ok) {
-        const csvText = await res.text();
-        const parsed = Papa.parse(csvText, { header: true, skipEmptyLines: true });
-        const points = parsed.data.filter(r => r.latitude && r.longitude);
+      // Ambil dari NOAA-21 (utama) & gabungkan dengan NOAA-20 jika tersedia
+      let sensorUsed = 'NOAA-21 VIIRS 375m';
+      let points = await fetchFirmsSensor(firmsKey, 'VIIRS_NOAA21_NRT');
 
-        points.forEach(pt => {
-          const lat = parseFloat(pt.latitude);
-          const lon = parseFloat(pt.longitude);
-          const marker = L.circleMarker([lat, lon], {
-            radius: 5,
-            fillColor: '#ff3b30',
-            color: '#ffd60a',
-            weight: 1,
-            fillOpacity: 0.9
-          });
-          marker.bindPopup(`
-            <div style="font-family:'Manrope',sans-serif;font-size:12px;">
-              <strong style="color:#ff3b30;">🛰️ NASA FIRMS VIIRS Real-Time</strong><br>
-              <b>Koordinat:</b> ${lat.toFixed(4)}, ${lon.toFixed(4)}<br>
-              <b>Tanggal/Jam (UTC):</b> ${pt.acq_date} ${pt.acq_time}<br>
-              <b>Brightness (TI4):</b> ${pt.bright_ti4} K<br>
-              <b>FRP:</b> ${pt.frp} MW • <b>Conf:</b> ${pt.confidence}
-            </div>
-          `);
-          layerRealtimeHotspots.addLayer(marker);
-        });
-
-        const count = points.length;
-        const estAreaHa = Math.round(count * 14.0625);
-
-        document.getElementById('hotspotCount').textContent = `${count.toLocaleString('id-ID')} Titik`;
-        document.getElementById('hotspotSourceSub').textContent = `NASA FIRMS VIIRS 375m (Live 24j)`;
-        document.getElementById('burnedArea').textContent = `${estAreaHa.toLocaleString('id-ID')} ha`;
-        document.getElementById('burnedSourceSub').textContent = `Estimasi Piksel VIIRS Aktif (${count} × 14,1 ha)`;
-        return;
+      if (points.length === 0) {
+        points = await fetchFirmsSensor(firmsKey, 'VIIRS_NOAA20_NRT');
+        sensorUsed = 'NOAA-20 VIIRS 375m';
       }
+
+      points.forEach(pt => {
+        const lat = parseFloat(pt.latitude);
+        const lon = parseFloat(pt.longitude);
+        const marker = L.circleMarker([lat, lon], {
+          radius: 5,
+          fillColor: '#ff3b30',
+          color: '#ffd60a',
+          weight: 1,
+          fillOpacity: 0.9
+        });
+        marker.bindPopup(`
+          <div style="font-family:'Manrope',sans-serif;font-size:12px;">
+            <strong style="color:#ff3b30;">🛰️ NASA FIRMS ${sensorUsed} (Live)</strong><br>
+            <b>Koordinat:</b> ${lat.toFixed(4)}, ${lon.toFixed(4)}<br>
+            <b>Tanggal/Jam (UTC):</b> ${pt.acq_date} ${pt.acq_time}<br>
+            <b>Brightness (TI4):</b> ${pt.bright_ti4} K<br>
+            <b>FRP:</b> ${pt.frp} MW • <b>Confidence:</b> ${pt.confidence}
+          </div>
+        `);
+        layerRealtimeHotspots.addLayer(marker);
+      });
+
+      const count = points.length;
+      // 1 piksel VIIRS 375m × 375m = 140.625 m2 = 14,0625 hektar
+      const estAreaHa = Math.round(count * 14.0625);
+
+      document.getElementById('hotspotCount').textContent = `${count.toLocaleString('id-ID')} Titik`;
+      document.getElementById('hotspotSourceSub').textContent = `NASA FIRMS ${sensorUsed} (Live 24j)`;
+      document.getElementById('burnedArea').textContent = `${estAreaHa.toLocaleString('id-ID')} ha`;
+      document.getElementById('burnedSourceSub').textContent = `Kalkulasi Piksel VIIRS (${count} × 14,1 ha)`;
+      return;
     } catch (e) {
       console.warn('Fallback ke NASA EONET:', e);
     }
   }
 
+  // Cadangan otomatis NASA EONET v3
   try {
     const eonetUrl = 'https://eonet.gsfc.nasa.gov/api/v3/events?category=wildfires&status=open';
     const res = await fetch(eonetUrl);
@@ -309,8 +317,7 @@ async function loadRealtimeSatelliteHotspots() {
               <div style="font-family:'Manrope',sans-serif;font-size:12px;">
                 <strong style="color:#ff3b30;">🔥 ${ev.title}</strong><br>
                 <b>Sumber:</b> NASA EONET v3 Real-Time<br>
-                <b>Koordinat:</b> ${lat.toFixed(4)}, ${lon.toFixed(4)}<br>
-                <b>Waktu Deteksi:</b> ${new Date(geom.date).toLocaleString('id-ID')}
+                <b>Koordinat:</b> ${lat.toFixed(4)}, ${lon.toFixed(4)}
               </div>
             `);
             layerRealtimeHotspots.addLayer(marker);
@@ -321,7 +328,7 @@ async function loadRealtimeSatelliteHotspots() {
 
     const estArea = Math.round(kalimantanSpots * 14.0625);
     document.getElementById('hotspotCount').textContent = `${kalimantanSpots} Titik`;
-    document.getElementById('hotspotSourceSub').textContent = `NASA EONET v3 Real-Time (Klik "Key FIRMS" u/ VIIRS)`;
+    document.getElementById('hotspotSourceSub').textContent = `NASA EONET v3 Real-Time`;
     document.getElementById('burnedArea').textContent = `${estArea.toLocaleString('id-ID')} ha`;
     document.getElementById('burnedSourceSub').textContent = `Estimasi Spasial Real-Time Aktif`;
   } catch (err) {
@@ -571,8 +578,20 @@ function playCanvasRasterSimulation(canvas, statusTextEl) {
 }
 
 // ============================================================
-// 8. GRAFIK ANALYTICS & TABEL RINGKASAN
+// 8. GRAFIK ANALYTICS, EXPORT CSV & TABEL RINGKASAN
 // ============================================================
+function initExportCsvButton() {
+  const btn = document.getElementById('exportChartBtn');
+  btn?.addEventListener('click', () => {
+    const link = document.createElement('a');
+    link.href = './data/01_Indikator_Kebakaran_Harian.csv';
+    link.download = '01_Indikator_Kebakaran_Harian.csv';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  });
+}
+
 function renderDefaultChart() {
   const canvas = document.getElementById('forecastChart');
   if (!canvas) return;
