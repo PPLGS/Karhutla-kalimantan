@@ -29,7 +29,7 @@
 
   <main class="wrap">
 
-    <!-- METRICS BAR (REAL-TIME + PERBANDINGAN HISTORIS) -->
+    <!-- METRICS BAR (REAL-TIME + PERBANDINGAN HISTORIS 10 HARI) -->
     <section class="metrics">
       <div class="metric">
         <label>TITIK API AKTIF (HARI INI VS HISTORIS)</label>
@@ -37,7 +37,7 @@
           <strong id="hotspotCount">Memuat API...</strong>
           <span id="hotspotTrendBadge" class="trend-pill trend-neutral">Menganalisis...</span>
         </div>
-        <small id="hotspotSourceSub">Memuat data 24 jam & historis 30 hari...</small>
+        <small id="hotspotSourceSub">Memuat data 24 jam & historis 10 hari...</small>
       </div>
       <div class="metric">
         <label>ESTIMASI LUAS TERBAKAR (LIVE 24J)</label>
@@ -69,9 +69,9 @@
           <div class="toolbar">
             <select id="hotspotRangeFilter" class="sim-select" title="Rentang waktu titik panas di peta">
               <option value="1">24 Jam Terakhir (Live)</option>
+              <option value="3">3 Hari Terakhir (Historis)</option>
               <option value="7">7 Hari Terakhir (Historis)</option>
-              <option value="10">10 Hari Terakhir (Historis)</option>
-              <option value="30">30 Hari Terakhir (Arsip)</option>
+              <option value="10">10 Hari Terakhir (Maks. NRT)</option>
             </select>
             <button class="btn" id="btnFirmsKey" title="Cek atau ubah NASA FIRMS MAP_KEY">🔑 Key FIRMS</button>
             <button class="btn primary" id="fitBtn">Zoom Kalimantan</button>
