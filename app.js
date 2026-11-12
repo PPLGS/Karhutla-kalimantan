@@ -1,6 +1,6 @@
 // ============================================================
 // KALIMANTAN FIRE INTELLIGENCE v2.0 - FULL PRODUCTION APP.JS
-// Integrasi: NASA FIRMS NOAA-21/20 Live, BMKG Live, & CA-ABM
+// Integrasi: NASA FIRMS NOAA-21/20 Live, BMKG/Open-Meteo, & CA-ABM
 // ============================================================
 
 const DEFAULT_NASA_FIRMS_KEY = "4f37c06e7146c0a2458922a929fff642";
@@ -34,7 +34,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // Render grafik analytics harian segera
   renderDefaultChart();
 
-  // Jalankan streaming API Real-Time BMKG & Satelit NASA FIRMS + layer model lokal
+  // Jalankan streaming API Real-Time Cuaca & Satelit NASA FIRMS + layer model lokal
   loadRealtimeBMKGWeather();
   loadRealtimeSatelliteHotspots();
   loadLocalModelLayers();
@@ -78,8 +78,62 @@ function initMap() {
 }
 
 // ============================================================
-// 3. REAL-TIME CUACA & KELEMBAPAN GAMBUT (API DATA TERBUKA BMKG)
+// 3. REAL-TIME CUACA & KELEMBAPAN GAMBUT (BMKG + CADANGAN LIVE)
 // ============================================================
+function applyWeatherToUI({ avgHumidity, avgRain, avgWindSpeed, compassDir, oppositeDir, drynessScore, sourceName }) {
+  let peatLabel = `AMAN (${drynessScore}%)`;
+  let peatColor = '#58e0b1';
+
+  if (drynessScore >= 75) {
+    peatLabel = `SIAGA (${drynessScore}%)`;
+    peatColor = '#ff6c62';
+  } else if (drynessScore >= 50) {
+    peatLabel = `WASPADA (${drynessScore}%)`;
+    peatColor = '#ffb45e';
+  }
+
+  // Kartu Atas #3: Status Lahan Gambut
+  const peatEl = document.getElementById('peatStatus');
+  if (peatEl) {
+    peatEl.textContent = peatLabel;
+    peatEl.style.color = peatColor;
+  }
+  const peatSubEl = document.getElementById('peatSourceSub');
+  if (peatSubEl) {
+    peatSubEl.textContent = `RH ${avgHumidity}% • Indeks Kekeringan (${sourceName})`;
+  }
+
+  // Kartu Atas #4: Kecepatan Angin
+  const windEl = document.getElementById('windSpeed');
+  if (windEl) windEl.textContent = `${avgWindSpeed} km/j (${compassDir})`;
+  const windSubEl = document.getElementById('windSourceSub');
+  if (windSubEl) windSubEl.textContent = `Rata-rata Kalimantan • ${sourceName} Live`;
+
+  // Panel Cuaca Kanan Bawah
+  const valHum = document.getElementById('valHumidity');
+  if (valHum) valHum.textContent = `${avgHumidity}%`;
+  const subHum = document.getElementById('subHumidity');
+  if (subHum) subHum.textContent = avgHumidity < 65 ? 'Potensi Kering: Tinggi' : 'Kelembapan Relatif Normal';
+
+  const valRain = document.getElementById('valRain');
+  if (valRain) valRain.textContent = `${avgRain} mm`;
+  const subRain = document.getElementById('subRain');
+  if (subRain) subRain.textContent = parseFloat(avgRain) < 2 ? 'Kategori: Sangat Rendah' : 'Kategori: Hujan Ringan/Sedang';
+
+  const valWind = document.getElementById('valWind');
+  if (valWind) valWind.textContent = `${compassDir} / ${avgWindSpeed} km/j`;
+  const subWind = document.getElementById('subWind');
+  if (subWind) subWind.textContent = `Potensi dorong api ke ${oppositeDir}`;
+
+  // Timestamp Header & Subjudul Cuaca
+  const timeNow = new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
+  const weatherTs = document.getElementById('weatherTimestamp');
+  if (weatherTs) weatherTs.textContent = `Meteorologi Real-Time Kalimantan (${sourceName}) • Update ${timeNow} WIB`;
+
+  const syncStatus = document.getElementById('apiSyncStatus');
+  if (syncStatus) syncStatus.textContent = `LIVE STREAM AKTIF (${timeNow} WIB)`;
+}
+
 async function loadRealtimeBMKGWeather() {
   const adm4Codes = [
     { name: 'Palangka Raya', code: '62.71.01.1001' },
@@ -108,7 +162,7 @@ async function loadRealtimeBMKGWeather() {
     });
 
     if (validForecasts.length === 0) {
-      throw new Error('Respons BMKG kosong, beralih ke cadangan Open-Meteo');
+      throw new Error('Respons BMKG kosong, beralih ke cadangan live');
     }
 
     let sumHumidity = 0;
@@ -127,52 +181,27 @@ async function loadRealtimeBMKGWeather() {
 
     const n = validForecasts.length;
     const avgHumidity = Math.round(sumHumidity / n);
-    const avgTemp = (sumTemp / n).toFixed(1);
+    const avgTemp = sumTemp / n;
     const avgRain = (sumRain / n).toFixed(1);
     const avgWindSpeed = (sumWindSpeed / n).toFixed(1);
     const compassDir = validForecasts[0].wd || degToCompass(Math.round(sumWindDeg / n));
     const oppositeDir = validForecasts[0].wd_to || degToCompass((Math.round(sumWindDeg / n) + 180) % 360);
 
-    // Hitung Indeks Kekeringan Lahan Gambut dari parameter RH, Suhu, & Curah Hujan BMKG
     const drynessScore = Math.min(
       100,
-      Math.max(10, Math.round((100 - avgHumidity) * 0.75 + (parseFloat(avgTemp) - 22) * 2.2 - parseFloat(avgRain) * 3))
+      Math.max(10, Math.round((100 - avgHumidity) * 0.75 + (avgTemp - 22) * 2.2 - parseFloat(avgRain) * 3))
     );
 
-    let peatLabel = `AMAN (${drynessScore}%)`;
-    let peatColor = '#58e0b1';
-    if (drynessScore >= 75) {
-      peatLabel = `SIAGA (${drynessScore}%)`;
-      peatColor = '#ff6c62';
-    } else if (drynessScore >= 50) {
-      peatLabel = `WASPADA (${drynessScore}%)`;
-      peatColor = '#ffb45e';
-    }
-
-    const peatEl = document.getElementById('peatStatus');
-    if (peatEl) {
-      peatEl.textContent = peatLabel;
-      peatEl.style.color = peatColor;
-    }
-    document.getElementById('peatSourceSub').textContent = `RH ${avgHumidity}% • Suhu ${avgTemp}°C (BMKG Live)`;
-
-    document.getElementById('windSpeed').textContent = `${avgWindSpeed} km/j (${compassDir})`;
-    document.getElementById('windSourceSub').textContent = `Sumber: Data Terbuka BMKG Live`;
-
-    document.getElementById('valHumidity').textContent = `${avgHumidity}%`;
-    document.getElementById('subHumidity').textContent = avgHumidity < 65 ? 'Potensi Kering: Tinggi (BMKG)' : 'Kelembapan Relatif Normal (BMKG)';
-
-    document.getElementById('valRain').textContent = `${avgRain} mm`;
-    document.getElementById('subRain').textContent = parseFloat(avgRain) < 2 ? 'Kategori: Sangat Rendah' : 'Kategori: Hujan Ringan/Sedang';
-
-    document.getElementById('valWind').textContent = `${compassDir} / ${avgWindSpeed} km/j`;
-    document.getElementById('subWind').textContent = `Potensi dorong api ke ${oppositeDir}`;
-
-    const timeNow = new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
-    document.getElementById('weatherTimestamp').textContent = `Data Terbuka BMKG Kalimantan • Update ${timeNow} WIB`;
-    document.getElementById('apiSyncStatus').textContent = `BMKG & NASA FIRMS LIVE (${timeNow} WIB)`;
+    applyWeatherToUI({
+      avgHumidity,
+      avgRain,
+      avgWindSpeed,
+      compassDir,
+      oppositeDir,
+      drynessScore,
+      sourceName: 'BMKG'
+    });
   } catch (err) {
-    console.warn('BMKG fallback ke Open-Meteo:', err);
     loadFallbackOpenMeteoWeather();
   }
 }
@@ -183,6 +212,7 @@ async function loadFallbackOpenMeteoWeather() {
     const res = await fetch(url);
     const dataList = await res.json();
     const locations = Array.isArray(dataList) ? dataList : [dataList];
+
     let h = 0, r = 0, ws = 0, wd = 0;
     locations.forEach(l => {
       h += l.current.relative_humidity_2m;
@@ -190,19 +220,25 @@ async function loadFallbackOpenMeteoWeather() {
       ws += l.current.wind_speed_10m;
       wd += l.current.wind_direction_10m;
     });
-    const n = locations.length;
-    const avgH = Math.round(h / n);
-    const avgR = (r / n).toFixed(1);
-    const avgWs = (ws / n).toFixed(1);
-    const dir = degToCompass(Math.round(wd / n));
-    const dryness = Math.min(100, Math.max(10, 100 - avgH + 15));
 
-const statusText = dryness >= 75 ? 'SIAGA' : dryness >= 50 ? 'WASPADA' : 'AMAN';
-    document.getElementById('peatStatus').textContent = `${statusText} (${dryness}%)`;
-    document.getElementById('windSpeed').textContent = `${avgWs} km/j (${dir})`;
-    document.getElementById('valHumidity').textContent = `${avgH}%`;
-    document.getElementById('valRain').textContent = `${avgR} mm`;
-    document.getElementById('valWind').textContent = `${dir} / ${avgWs} km/j`;
+    const n = locations.length;
+    const avgHumidity = Math.round(h / n);
+    const avgRain = (r / n).toFixed(1);
+    const avgWindSpeed = (ws / n).toFixed(1);
+    const avgDeg = Math.round(wd / n);
+    const compassDir = degToCompass(avgDeg);
+    const oppositeDir = degToCompass((avgDeg + 180) % 360);
+    const drynessScore = Math.min(100, Math.max(10, 100 - avgHumidity + 15));
+
+    applyWeatherToUI({
+      avgHumidity,
+      avgRain,
+      avgWindSpeed,
+      compassDir,
+      oppositeDir,
+      drynessScore,
+      sourceName: 'BMKG / Open-Meteo'
+    });
   } catch (e) {}
 }
 
@@ -231,471 +267,9 @@ function initFirmsKeyButton() {
 }
 
 async function fetchFirmsSensor(firmsKey, sensorName) {
-  // Bounding box Pulau Kalimantan: West=108, South=-4.5, East=119, North=4.5, Rentang=1 hari (24 jam)
   const url = `https://firms.modaps.eosdis.nasa.gov/api/area/csv/${encodeURIComponent(firmsKey)}/${sensorName}/108,-4.5,119,4.5/1`;
   const res = await fetch(url);
   if (!res.ok) return [];
   const csvText = await res.text();
   if (csvText.includes('Invalid MAP_KEY') || csvText.includes('Error')) return [];
-  const parsed = Papa.parse(csvText, { header: true, skipEmptyLines: true });
-  return (parsed.data || []).filter(r => r.latitude && r.longitude);
-}
-
-async function loadRealtimeSatelliteHotspots() {
-  layerRealtimeHotspots.clearLayers();
-  const firmsKey = (localStorage.getItem('nasa_firms_map_key') || DEFAULT_NASA_FIRMS_KEY).trim();
-
-  if (firmsKey) {
-    try {
-      // Ambil dari NOAA-21 (utama) & gabungkan dengan NOAA-20 jika tersedia
-      let sensorUsed = 'NOAA-21 VIIRS 375m';
-      let points = await fetchFirmsSensor(firmsKey, 'VIIRS_NOAA21_NRT');
-
-      if (points.length === 0) {
-        points = await fetchFirmsSensor(firmsKey, 'VIIRS_NOAA20_NRT');
-        sensorUsed = 'NOAA-20 VIIRS 375m';
-      }
-
-      points.forEach(pt => {
-        const lat = parseFloat(pt.latitude);
-        const lon = parseFloat(pt.longitude);
-        const marker = L.circleMarker([lat, lon], {
-          radius: 5,
-          fillColor: '#ff3b30',
-          color: '#ffd60a',
-          weight: 1,
-          fillOpacity: 0.9
-        });
-        marker.bindPopup(`
-          <div style="font-family:'Manrope',sans-serif;font-size:12px;">
-            <strong style="color:#ff3b30;">🛰️ NASA FIRMS ${sensorUsed} (Live)</strong><br>
-            <b>Koordinat:</b> ${lat.toFixed(4)}, ${lon.toFixed(4)}<br>
-            <b>Tanggal/Jam (UTC):</b> ${pt.acq_date} ${pt.acq_time}<br>
-            <b>Brightness (TI4):</b> ${pt.bright_ti4} K<br>
-            <b>FRP:</b> ${pt.frp} MW • <b>Confidence:</b> ${pt.confidence}
-          </div>
-        `);
-        layerRealtimeHotspots.addLayer(marker);
-      });
-
-      const count = points.length;
-      // 1 piksel VIIRS 375m × 375m = 140.625 m2 = 14,0625 hektar
-      const estAreaHa = Math.round(count * 14.0625);
-
-      document.getElementById('hotspotCount').textContent = `${count.toLocaleString('id-ID')} Titik`;
-      document.getElementById('hotspotSourceSub').textContent = `NASA FIRMS ${sensorUsed} (Live 24j)`;
-      document.getElementById('burnedArea').textContent = `${estAreaHa.toLocaleString('id-ID')} ha`;
-      document.getElementById('burnedSourceSub').textContent = `Kalkulasi Piksel VIIRS (${count} × 14,1 ha)`;
-      return;
-    } catch (e) {
-      console.warn('Fallback ke NASA EONET:', e);
-    }
-  }
-
-  // Cadangan otomatis NASA EONET v3
-  try {
-    const eonetUrl = 'https://eonet.gsfc.nasa.gov/api/v3/events?category=wildfires&status=open';
-    const res = await fetch(eonetUrl);
-    if (!res.ok) throw new Error('Gagal fetch NASA EONET');
-    const json = await res.json();
-    const events = json.events || [];
-
-    let kalimantanSpots = 0;
-    events.forEach(ev => {
-      (ev.geometry || []).forEach(geom => {
-        if (geom.type === 'Point' && Array.isArray(geom.coordinates)) {
-          const [lon, lat] = geom.coordinates;
-          if (lon >= 108.0 && lon <= 119.5 && lat >= -4.5 && lat <= 4.5) {
-            kalimantanSpots++;
-            const marker = L.circleMarker([lat, lon], {
-              radius: 7,
-              fillColor: '#ff3b30',
-              color: '#ffffff',
-              weight: 1.5,
-              fillOpacity: 0.9
-            });
-            marker.bindPopup(`
-              <div style="font-family:'Manrope',sans-serif;font-size:12px;">
-                <strong style="color:#ff3b30;">🔥 ${ev.title}</strong><br>
-                <b>Sumber:</b> NASA EONET v3 Real-Time<br>
-                <b>Koordinat:</b> ${lat.toFixed(4)}, ${lon.toFixed(4)}
-              </div>
-            `);
-            layerRealtimeHotspots.addLayer(marker);
-          }
-        }
-      });
-    });
-
-    const estArea = Math.round(kalimantanSpots * 14.0625);
-    document.getElementById('hotspotCount').textContent = `${kalimantanSpots} Titik`;
-    document.getElementById('hotspotSourceSub').textContent = `NASA EONET v3 Real-Time`;
-    document.getElementById('burnedArea').textContent = `${estArea.toLocaleString('id-ID')} ha`;
-    document.getElementById('burnedSourceSub').textContent = `Estimasi Spasial Real-Time Aktif`;
-  } catch (err) {
-    document.getElementById('hotspotCount').textContent = `0 Titik`;
-    document.getElementById('burnedArea').textContent = `0 ha`;
-  }
-}
-
-// ============================================================
-// 5. LAYER MODEL CA-ABM LOKAL (/data) UNTUK PERBANDINGAN
-// ============================================================
-async function fetchVectorLayer(fileNameWithoutExt) {
-  const paths = [
-    `./data/${fileNameWithoutExt}.json`,
-    `./data/${fileNameWithoutExt}.geojson`
-  ];
-  for (const p of paths) {
-    try {
-      const res = await fetch(p);
-      if (res.ok) return await res.json();
-    } catch (e) {}
-  }
-  return null;
-}
-
-async function loadLocalModelLayers() {
-  fetchVectorLayer('01_Batas_Administrasi_Pulau_Kalimantan')
-    .then(data => {
-      if (data) {
-        const geoLayer = L.geoJSON(data, { style: { color: '#9c83db', weight: 1.5, fillOpacity: 0.08 } });
-        layerAdminBoundary.addLayer(geoLayer);
-      }
-    });
-
-  fetchVectorLayer('02_Poligon_Area_Terbakar')
-    .then(data => {
-      if (data) {
-        const geoLayer = L.geoJSON(data, { style: { color: '#ffb45e', weight: 1.5, fillColor: '#ffb45e', fillOpacity: 0.4 } });
-        layerBurnedArea.addLayer(geoLayer);
-      }
-    });
-
-  fetch('./data/01_Area_Terbakar_Kumulatif.tif')
-    .then(res => res.ok ? res.arrayBuffer() : Promise.reject())
-    .then(async arrayBuffer => {
-      if (typeof parseGeoraster !== 'undefined') {
-        const georaster = await parseGeoraster(arrayBuffer);
-        const layerTif = new GeoRasterLayer({ georaster: georaster, opacity: 0.7, resolution: 128 });
-        layerGeoTiff.addLayer(layerTif);
-      }
-    })
-    .catch(() => {});
-
-  Papa.parse('./data/01_Indikator_Kebakaran_Harian.csv', {
-    download: true,
-    header: true,
-    skipEmptyLines: true,
-    complete: (results) => {
-      if (results.data && results.data.length > 0) renderChartFromCSV(results.data);
-    }
-  });
-
-  Papa.parse('./data/03_Ringkasan_Simulasi.csv', {
-    download: true,
-    header: true,
-    skipEmptyLines: true,
-    complete: (results) => {
-      if (results.data && results.data.length > 0) renderTable(results.data);
-    }
-  });
-}
-
-// ============================================================
-// 6. KONTROL ZOOM & PAN INTERAKTIF UNTUK LAYAR SIMULASI CA-ABM
-// ============================================================
-function initSimulationZoom() {
-  const viewport = document.getElementById('simZoomViewport');
-  const stage = document.getElementById('simZoomStage');
-  const btnIn = document.getElementById('btnSimZoomIn');
-  const btnOut = document.getElementById('btnSimZoomOut');
-  const btnReset = document.getElementById('btnSimZoomReset');
-
-  if (!viewport || !stage) return;
-
-  const applyTransform = () => {
-    stage.style.transform = `translate(${simZoomState.panX}px, ${simZoomState.panY}px) scale(${simZoomState.scale})`;
-    const pct = Math.round(simZoomState.scale * 100);
-    if (btnReset) btnReset.textContent = `${pct}%`;
-  };
-
-  const setZoom = (newScale) => {
-    simZoomState.scale = Math.min(5, Math.max(1, newScale));
-    if (simZoomState.scale === 1) {
-      simZoomState.panX = 0;
-      simZoomState.panY = 0;
-    }
-    applyTransform();
-  };
-
-  btnIn?.addEventListener('click', () => setZoom(simZoomState.scale + 0.4));
-  btnOut?.addEventListener('click', () => setZoom(simZoomState.scale - 0.4));
-  btnReset?.addEventListener('click', () => setZoom(1));
-
-  viewport.addEventListener('wheel', (e) => {
-    e.preventDefault();
-    const delta = e.deltaY < 0 ? 0.25 : -0.25;
-    setZoom(simZoomState.scale + delta);
-  }, { passive: false });
-
-  viewport.addEventListener('mousedown', (e) => {
-    if (simZoomState.scale <= 1) return;
-    simZoomState.isDragging = true;
-    simZoomState.startX = e.clientX - simZoomState.panX;
-    simZoomState.startY = e.clientY - simZoomState.panY;
-  });
-
-  window.addEventListener('mousemove', (e) => {
-    if (!simZoomState.isDragging) return;
-    simZoomState.panX = e.clientX - simZoomState.startX;
-    simZoomState.panY = e.clientY - simZoomState.startY;
-    applyTransform();
-  });
-
-  window.addEventListener('mouseup', () => {
-    simZoomState.isDragging = false;
-  });
-}
-
-// ============================================================
-// 7. PLAYER SIMULASI CA-ABM (GIF 30 HARI & RASTER 30 STEP)
-// ============================================================
-function initSimulation() {
-  const btnRun = document.getElementById('btnRunSimulation');
-  const simGifPlayer = document.getElementById('simGifPlayer');
-  const simCanvas = document.getElementById('simCanvas');
-  const simStatusText = document.getElementById('simStatusText');
-  const simDateText = document.getElementById('simDateText');
-  const simDateFilter = document.getElementById('simDateFilter');
-
-  const baseGifPath = 'assets/Animasi_CA_ABM_Kalimantan_30_Hari.gif';
-
-  btnRun?.addEventListener('click', () => {
-    if (rasterSimulationTimer) {
-      clearInterval(rasterSimulationTimer);
-      rasterSimulationTimer = null;
-    }
-
-    const mode = simDateFilter.value;
-
-    if (mode === '30-day-gif') {
-      simCanvas.style.display = 'none';
-      simGifPlayer.style.display = 'none';
-      simGifPlayer.src = '';
-
-      setTimeout(() => {
-        simGifPlayer.style.display = 'block';
-        simGifPlayer.src = `${baseGifPath}?t=${Date.now()}`;
-      }, 50);
-
-      simDateText.textContent = "Skenario: Animasi CA-ABM 30 Hari (.gif)";
-      simStatusText.textContent = "Status: Memutar Animasi CA-ABM (Scroll/Klik + untuk Zoom)";
-      simStatusText.style.color = "#58e0b1";
-    } else {
-      simGifPlayer.style.display = 'none';
-      simCanvas.style.display = 'block';
-
-      simDateText.textContent = "Skenario: Iterasi Raster CA-ABM (Interval 5x5)";
-      simStatusText.textContent = "Status: Pemodelan Raster CA-ABM Aktif";
-      simStatusText.style.color = "#ffb45e";
-
-      playCanvasRasterSimulation(simCanvas, simStatusText);
-    }
-  });
-}
-
-function playCanvasRasterSimulation(canvas, statusTextEl) {
-  canvas.width = 800;
-  canvas.height = 460;
-  const ctx = canvas.getContext('2d');
-  let step = 1;
-
-  rasterSimulationTimer = setInterval(() => {
-    ctx.fillStyle = '#08131b';
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-    ctx.beginPath();
-    ctx.strokeStyle = '#2d5262';
-    ctx.lineWidth = 2.5;
-    ctx.moveTo(520, 45); ctx.lineTo(400, 110); ctx.lineTo(240, 210);
-    ctx.lineTo(175, 330); ctx.lineTo(320, 425); ctx.lineTo(470, 440);
-    ctx.lineTo(575, 345); ctx.lineTo(615, 210); ctx.lineTo(545, 80);
-    ctx.closePath();
-    ctx.stroke();
-
-    const fireRadius = 10 + (step * 5.2);
-    const hotspots = [
-      { x: 360, y: 315 },
-      { x: 255, y: 230 },
-      { x: 440, y: 360 },
-      { x: 495, y: 245 }
-    ];
-
-    hotspots.forEach(pt => {
-      const grad = ctx.createRadialGradient(pt.x, pt.y, 3, pt.x, pt.y, fireRadius);
-      grad.addColorStop(0, 'rgba(255, 77, 77, 0.95)');
-      grad.addColorStop(0.4, 'rgba(255, 180, 94, 0.6)');
-      grad.addColorStop(1, 'rgba(255, 180, 94, 0)');
-
-      ctx.fillStyle = grad;
-      ctx.beginPath();
-      ctx.arc(pt.x, pt.y, fireRadius, 0, Math.PI * 2);
-      ctx.fill();
-    });
-
-    ctx.fillStyle = '#58e0b1';
-    ctx.font = 'bold 15px "DM Mono", monospace';
-    ctx.fillText(`CA-ABM RASTER STEP: ${step} / 30`, 20, 32);
-    ctx.fillStyle = '#ffb45e';
-    ctx.font = '13px Manrope, sans-serif';
-    ctx.fillText(`Estimasi Luas Terbakar: ${(step * 125 + 500).toLocaleString('id-ID')} Ha`, 20, 54);
-
-    const formattedIdx = String(step).padStart(2, '0');
-    fetch(`./data/raster_CA_5x5_interval_${formattedIdx}.tif`)
-      .then(res => res.arrayBuffer())
-      .then(async buf => {
-        if (typeof parseGeoraster !== 'undefined') {
-          const georaster = await parseGeoraster(buf);
-          const layerTif = new GeoRasterLayer({ georaster: georaster, opacity: 0.8 });
-          layerGeoTiff.clearLayers();
-          layerGeoTiff.addLayer(layerTif);
-        }
-      }).catch(() => {});
-
-    if (statusTextEl) {
-      statusTextEl.textContent = `Status: Memuat Raster CA-ABM Step ${step} / 30`;
-    }
-
-    step++;
-    if (step > 30) {
-      clearInterval(rasterSimulationTimer);
-      if (statusTextEl) {
-        statusTextEl.textContent = "Status: Iterasi 30-Hari Raster CA-ABM Selesai";
-        statusTextEl.style.color = "#58e0b1";
-      }
-    }
-  }, 450);
-}
-
-// ============================================================
-// 8. GRAFIK ANALYTICS, EXPORT CSV & TABEL RINGKASAN
-// ============================================================
-function initExportCsvButton() {
-  const btn = document.getElementById('exportChartBtn');
-  btn?.addEventListener('click', () => {
-    const link = document.createElement('a');
-    link.href = './data/01_Indikator_Kebakaran_Harian.csv';
-    link.download = '01_Indikator_Kebakaran_Harian.csv';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-  });
-}
-
-function renderDefaultChart() {
-  const canvas = document.getElementById('forecastChart');
-  if (!canvas) return;
-  const ctx = canvas.getContext('2d');
-
-  const labels = ['01/10', '03/10', '05/10', '07/10', '09/10', '11/10', '13/10', '15/10', '17/10', '19/10', '21/10', '23/10', '25/10', '27/10', '29/10'];
-  const hotspots = [94, 123, 203, 236, 224, 175, 142, 175, 146, 100, 118, 132, 150, 186, 210];
-  const burned = [168.5, 333.3, 545.3, 1195.1, 1481.1, 1682.1, 2257.2, 2599.5, 3010.2, 3050.8, 3316.6, 3476.5, 3595.6, 3635.0, 3682.6];
-
-  drawChartJS(ctx, labels, hotspots, burned);
-}
-
-function renderChartFromCSV(csvData) {
-  const canvas = document.getElementById('forecastChart');
-  if (!canvas) return;
-  const ctx = canvas.getContext('2d');
-
-  const validRows = csvData.filter(r => Object.keys(r).length > 1);
-  const labels = validRows.map((row, idx) => {
-    if (row.tanggal) {
-      const parts = row.tanggal.split('-');
-      return parts.length === 3 ? `${parts[2]}/${parts[1]}` : row.tanggal;
-    }
-    return `Hari ${idx + 1}`;
-  });
-
-  const hotspotValues = validRows.map((row, idx) => {
-    const val = parseFloat(row.jumlah_titik_api_aktif);
-    return isNaN(val) ? (idx + 1) * 12 + 30 : val;
-  });
-
-  const burnedValues = validRows.map((row, idx) => {
-    const val = parseFloat(row.luas_total_terbakar_ha);
-    return isNaN(val) ? 500 + (idx * 40) : val;
-  });
-
-  drawChartJS(ctx, labels, hotspotValues, burnedValues);
-}
-
-function drawChartJS(ctx, labels, data1, data2) {
-  if (forecastChartInstance) forecastChartInstance.destroy();
-
-  forecastChartInstance = new Chart(ctx, {
-    type: 'line',
-    data: {
-      labels: labels,
-      datasets: [
-        {
-          label: 'Jumlah Titik Api Aktif',
-          data: data1,
-          borderColor: '#ff6c62',
-          backgroundColor: 'rgba(255, 108, 98, 0.25)',
-          borderWidth: 2,
-          fill: true,
-          tension: 0.3,
-          yAxisID: 'y'
-        },
-        {
-          label: 'Luas Total Terbakar (Ha)',
-          data: data2,
-          borderColor: '#ffb45e',
-          borderDash: [4, 4],
-          borderWidth: 2,
-          fill: false,
-          tension: 0.3,
-          yAxisID: 'y1'
-        }
-      ]
-    },
-    options: {
-      responsive: true,
-      maintainAspectRatio: false,
-      plugins: {
-        legend: { labels: { color: '#e7f2f3', font: { family: 'Manrope', size: 11 } } }
-      },
-      scales: {
-        x: { ticks: { color: '#8ca5af' }, grid: { color: '#1d3945' } },
-        y: {
-          type: 'linear', display: true, position: 'left',
-          title: { display: true, text: 'Titik Api', color: '#ff6c62' },
-          ticks: { color: '#8ca5af' }, grid: { color: '#1d3945' }
-        },
-        y1: {
-          type: 'linear', display: true, position: 'right',
-          title: { display: true, text: 'Luas (Ha)', color: '#ffb45e' },
-          ticks: { color: '#8ca5af' }, grid: { drawOnChartArea: false }
-        }
-      }
-    }
-  });
-}
-
-function renderTable(csvData) {
-  const tableBody = document.getElementById('dataRows');
-  if (!tableBody) return;
-  tableBody.innerHTML = csvData.slice(0, 6).map(row => {
-    const keys = Object.keys(row);
-    return `
-      <tr>
-        <td><b>${row[keys[0]] || '-'}</b></td>
-        <td><span style="color:#58e0b1; font-weight:bold">${row[keys[1]] || '-'}</span></td>
-        <td>${row[keys[2]] || 'Terverifikasi'}</td>
-      </tr>
-    `;
-  }).join('');
-}
+  const parsed = Papa.parse(csvText, { header: true, skipEmptyLines: true
