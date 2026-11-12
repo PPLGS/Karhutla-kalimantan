@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Kalimantan Fire Intelligence v2.0 | Automated WebGIS</title>
+  <title>Kalimantan Fire Intelligence v2.0 | Real-Time & CA-ABM WebGIS</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
@@ -17,55 +17,56 @@
       <div class="brand-icon">🔥</div>
       <div>
         <h1>KALIMANTAN FIRE INTELLIGENCE v2.0</h1>
-        <p>REAL-TIME MONITORING & CA-BM FIRE SIMULATION PLATFORM</p>
+        <p>REAL-TIME MONITORING & CA-ABM FIRE SIMULATION PLATFORM</p>
       </div>
     </div>
     <div class="topright">
-      <span class="live">LIVE DATA STREAM</span>
-      <span class="status-text">KALIMANTAN REGION ON-STREAM</span>
+      <span class="live">LIVE API STREAM</span>
+      <span class="status-text" id="apiSyncStatus">SINKRONISASI BMKG & SATELIT...</span>
       <div class="date" id="dateNow"></div>
     </div>
   </header>
 
   <main class="wrap">
 
-    <!-- METRICS BAR -->
+    <!-- METRICS BAR (100% REAL-TIME API) -->
     <section class="metrics">
       <div class="metric">
-        <label>TITIK API AKTIF</label>
-        <strong id="hotspotCount">Memuat...</strong>
-        <small>Data Otomatis Folder /data</small>
+        <label>TITIK API AKTIF (REAL-TIME 24J)</label>
+        <strong id="hotspotCount">Memuat API...</strong>
+        <small id="hotspotSourceSub">Sumber: NASA Satelit Live</small>
       </div>
       <div class="metric">
-        <label>ESTIMASI LUAS TERBAKAR</label>
-        <strong id="burnedArea">Memuat...</strong>
-        <small>Kalkulasi Spasial Poligon</small>
+        <label>ESTIMASI LUAS TERBAKAR (LIVE)</label>
+        <strong id="burnedArea">Menghitung...</strong>
+        <small id="burnedSourceSub">Kalkulasi Piksel Aktif Real-Time</small>
       </div>
       <div class="metric">
-        <label>STATUS LAHAN GAMBUT</label>
-        <strong id="peatStatus">WASPADA (82%)</strong>
-        <small>Monitoring Kelembapan</small>
+        <label>STATUS LAHAN GAMBUT (BMKG)</label>
+        <strong id="peatStatus">Memuat...</strong>
+        <small id="peatSourceSub">Indeks Kekeringan dari Data BMKG</small>
       </div>
       <div class="metric">
         <label>KECEPATAN ANGIN RATA-RATA</label>
-        <strong id="windSpeed">18 km/j (NW)</strong>
-        <small>Streaming Cuaca Real-Time</small>
+        <strong id="windSpeed">Memuat...</strong>
+        <small id="windSourceSub">Data Terbuka BMKG Kalimantan</small>
       </div>
     </section>
 
     <!-- GRID UTAMA DASHBOARD -->
     <section class="main-dashboard-grid">
 
-      <!-- PETA LEAFLET -->
+      <!-- PETA LEAFLET REAL-TIME -->
       <article class="panel panel-map">
         <div class="panel-head">
           <div>
-            <h3>Peta Monitoring Kebakaran Real-Time & Raster</h3>
-            <p>Visualisasi spasial GeoJSON & GeoTIFF otomatis dari folder /data</p>
+            <h3>Peta Monitoring Kebakaran Real-Time</h3>
+            <p>Streaming titik panas satelit langsung & batas wilayah Kalimantan</p>
           </div>
           <div class="toolbar">
-            <button class="btn primary" id="fitBtn">Zoom ke Kalimantan</button>
-            <button class="btn" id="resetBtn">Reset View</button>
+            <button class="btn" id="btnFirmsKey" title="Masukkan NASA FIRMS MAP_KEY gratis">🔑 Key FIRMS</button>
+            <button class="btn primary" id="fitBtn">Zoom Kalimantan</button>
+            <button class="btn" id="resetBtn">Reset</button>
           </div>
         </div>
 
@@ -73,42 +74,55 @@
         <div class="layer-control-bar">
           <label class="layer-chk">
             <input type="checkbox" id="chkAdminBoundary" checked>
-            <span class="badge badge-purple">■ Batas Administrasi</span>
+            <span class="badge badge-purple">■ Batas Wilayah</span>
           </label>
           <label class="layer-chk">
-            <input type="checkbox" id="chkActiveFires" checked>
-            <span class="badge badge-red">● Api Aktif (GeoJSON)</span>
+            <input type="checkbox" id="chkRealtimeHotspots" checked>
+            <span class="badge badge-red">● Hotspot Real-Time (Live)</span>
           </label>
           <label class="layer-chk">
-            <input type="checkbox" id="chkBurnedArea" checked>
-            <span class="badge badge-amber">■ Poligon Area Terbakar</span>
+            <input type="checkbox" id="chkBurnedArea">
+            <span class="badge badge-amber">■ Poligon Model CA-ABM</span>
           </label>
           <label class="layer-chk">
-            <input type="checkbox" id="chkGeoTiff" checked>
-            <span class="badge badge-blue">▧ Raster GeoTIFF (.tif)</span>
+            <input type="checkbox" id="chkGeoTiff">
+            <span class="badge badge-blue">▧ Raster Model (.tif)</span>
           </label>
         </div>
 
         <div id="map" class="map-area"></div>
       </article>
 
-      <!-- SIMULASI PERGERAKAN API -->
+      <!-- SIMULASI PERGERAKAN API (DIPERBESAR & BISA DI-ZOOM) -->
       <article class="panel panel-simulation">
         <div class="panel-head">
           <div>
-            <h3>Simulasi Pemodelan Penyebaran Api (CA-BM)</h3>
-            <p>Hasil pemodelan adveksi 30 hari diputar langsung dari folder /assets</p>
+            <h3>Simulasi Pemodelan Penyebaran Api (CA-ABM)</h3>
+            <p>Scroll mouse / tombol (+/-) untuk zoom & geser untuk melihat detail</p>
           </div>
-          <span class="tag tag-sim">SIMULASI CA-BM</span>
+          <span class="tag tag-sim">SIMULASI CA-ABM</span>
         </div>
 
         <div class="sim-container">
           <div class="sim-screen" id="simScreen">
-            <canvas id="simCanvas" width="600" height="350" style="display:none;"></canvas>
-            <img id="simGifPlayer" src="assets/Animasi_CA_ABM_Kalimantan_30_Hari.gif" alt="Simulasi Animasi CA-BM" style="display:block;">
+            <!-- Kontrol Zoom Mengambang di Pojok Kanan Atas -->
+            <div class="sim-zoom-controls">
+              <button type="button" class="sim-zoom-btn" id="btnSimZoomIn" title="Perbesar (Zoom In)">+</button>
+              <button type="button" class="sim-zoom-btn" id="btnSimZoomOut" title="Perkecil (Zoom Out)">−</button>
+              <button type="button" class="sim-zoom-btn sim-zoom-reset" id="btnSimZoomReset" title="Reset Zoom">100%</button>
+            </div>
+
+            <!-- Viewport Zoomable & Pannable -->
+            <div class="sim-zoom-viewport" id="simZoomViewport">
+              <div class="sim-zoom-stage" id="simZoomStage">
+                <canvas id="simCanvas" width="800" height="460" style="display:none;"></canvas>
+                <img id="simGifPlayer" src="assets/Animasi_CA_ABM_Kalimantan_30_Hari.gif" alt="Simulasi Animasi CA-ABM" style="display:block;">
+              </div>
+            </div>
+
             <div class="sim-overlay-info">
-              <span id="simDateText">Skenario: Animasi CA-BM 30 Hari</span>
-              <span id="simStatusText">Status: Standby</span>
+              <span id="simDateText">Skenario: Animasi CA-ABM 30 Hari (.gif)</span>
+              <span id="simStatusText">Status: Standby (Zoom: 100%)</span>
             </div>
           </div>
 
@@ -116,8 +130,8 @@
             <div class="filter-group">
               <label>PILIH SKENARIO SIMULASI:</label>
               <select id="simDateFilter" class="sim-select">
-                <option value="30-day-gif">Animasi CA-BM 30 Hari (.gif)</option>
-                <option value="raster-interval">Iterasi Raster CA-BM (Interval 5x5)</option>
+                <option value="30-day-gif">Animasi CA-ABM 30 Hari (.gif)</option>
+                <option value="raster-interval">Iterasi Raster CA-ABM (Interval 5x5)</option>
               </select>
             </div>
             <button class="btn primary btn-sim" id="btnRunSimulation">▶ Simulasikan Pergerakan Api</button>
@@ -130,7 +144,7 @@
         <div class="panel-head">
           <div>
             <h3>Grafik Analytics & Indikator Harian</h3>
-            <p>Tren kenaikan hotspot & hasil simulasi dari file CSV /data</p>
+            <p>Tren kenaikan hotspot & luas terbakar hasil pemodelan harian CA-ABM</p>
           </div>
           <button class="btn" id="exportChartBtn">Export Data CSV</button>
         </div>
@@ -139,30 +153,30 @@
         </div>
       </article>
 
-      <!-- STREAM CUACA & TABEL DATA -->
+      <!-- STREAM CUACA REAL-TIME BMKG & RINGKASAN SIMULASI -->
       <article class="panel panel-weather-attribute">
         <div class="panel-head">
           <div>
-            <h3>Live Weather Stream & Ringkasan Simulasi</h3>
-            <p>Ringkasan otomatis diproses langsung dari file CSV /data</p>
+            <h3>Live Weather Stream (BMKG) & Ringkasan Simulasi</h3>
+            <p id="weatherTimestamp">Data meteorologi real-time Data Terbuka BMKG Kalimantan</p>
           </div>
         </div>
 
         <div class="weather-grid">
           <div class="w-card">
-            <span class="w-label">Kelembapan Udara</span>
-            <span class="w-val" id="valHumidity">45%</span>
-            <small class="w-sub">Potensi Kering: Tinggi</small>
+            <span class="w-label">Kelembapan Udara (BMKG)</span>
+            <span class="w-val" id="valHumidity">Memuat...</span>
+            <small class="w-sub" id="subHumidity">Sinkronisasi BMKG...</small>
           </div>
           <div class="w-card">
-            <span class="w-label">Curah Hujan (24h)</span>
-            <span class="w-val" id="valRain">0.2 mm</span>
-            <small class="w-sub">Kategori: Sangat Rendah</small>
+            <span class="w-label">Curah Hujan (BMKG)</span>
+            <span class="w-val" id="valRain">Memuat...</span>
+            <small class="w-sub" id="subRain">Sinkronisasi presipitasi...</small>
           </div>
           <div class="w-card">
             <span class="w-label">Arah & Kecepatan Angin</span>
-            <span class="w-val" id="valWind">NW / 18 km/jam</span>
-            <small class="w-sub">Mendorong api ke Tenggara</small>
+            <span class="w-val" id="valWind">Memuat...</span>
+            <small class="w-sub" id="subWind">Sinkronisasi vektor angin...</small>
           </div>
         </div>
 
@@ -176,7 +190,7 @@
               </tr>
             </thead>
             <tbody id="dataRows">
-              <tr><td colspan="3">Memuat data dari folder /data...</td></tr>
+              <tr><td colspan="3">Memuat ringkasan simulasi...</td></tr>
             </tbody>
           </table>
         </div>
@@ -185,7 +199,7 @@
     </section>
 
     <footer>
-      KALIMANTAN FIRE INTELLIGENCE v2.0 &copy; 2026 — AUTOMATED FOLDER-BASED WEBGIS PLATFORM
+      KALIMANTAN FIRE INTELLIGENCE v2.0 &copy; 2026 — REAL-TIME BMKG, SATELLITE & CA-ABM WEBGIS PLATFORM
     </footer>
   </main>
 
