@@ -3,10 +3,10 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Kalimantan Fire Intelligence v2.0 | Real-Time & CA-ABM WebGIS</title>
+  <title>Kalimantan Fire Intelligence v2.0 | Real-Time, Historis & CA-ABM WebGIS</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css">
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -17,7 +17,7 @@
       <div class="brand-icon">🔥</div>
       <div>
         <h1>KALIMANTAN FIRE INTELLIGENCE v2.0</h1>
-        <p>REAL-TIME MONITORING & CA-ABM FIRE SIMULATION PLATFORM</p>
+        <p>REAL-TIME, HISTORICAL & CA-ABM FIRE SIMULATION PLATFORM</p>
       </div>
     </div>
     <div class="topright">
@@ -29,15 +29,18 @@
 
   <main class="wrap">
 
-    <!-- METRICS BAR (100% REAL-TIME API) -->
+    <!-- METRICS BAR (REAL-TIME + PERBANDINGAN HISTORIS) -->
     <section class="metrics">
       <div class="metric">
-        <label>TITIK API AKTIF (REAL-TIME 24J)</label>
-        <strong id="hotspotCount">Memuat API...</strong>
-        <small id="hotspotSourceSub">Sumber: NASA Satelit Live</small>
+        <label>TITIK API AKTIF (HARI INI VS HISTORIS)</label>
+        <div class="metric-row">
+          <strong id="hotspotCount">Memuat API...</strong>
+          <span id="hotspotTrendBadge" class="trend-pill trend-neutral">Menganalisis...</span>
+        </div>
+        <small id="hotspotSourceSub">Memuat data 24 jam & historis 30 hari...</small>
       </div>
       <div class="metric">
-        <label>ESTIMASI LUAS TERBAKAR (LIVE)</label>
+        <label>ESTIMASI LUAS TERBAKAR (LIVE 24J)</label>
         <strong id="burnedArea">Menghitung...</strong>
         <small id="burnedSourceSub">Kalkulasi Piksel Aktif Real-Time</small>
       </div>
@@ -56,15 +59,21 @@
     <!-- GRID UTAMA DASHBOARD -->
     <section class="main-dashboard-grid">
 
-      <!-- PETA LEAFLET REAL-TIME -->
+      <!-- PETA LEAFLET REAL-TIME & HISTORIS -->
       <article class="panel panel-map">
         <div class="panel-head">
           <div>
-            <h3>Peta Monitoring Kebakaran Real-Time</h3>
-            <p>Streaming titik panas satelit langsung & batas wilayah Kalimantan</p>
+            <h3>Peta Monitoring Kebakaran Real-Time & Historis</h3>
+            <p>Pilih rentang waktu untuk melihat sebaran titik api hari ini maupun historis</p>
           </div>
           <div class="toolbar">
-            <button class="btn" id="btnFirmsKey" title="Masukkan NASA FIRMS MAP_KEY gratis">🔑 Key FIRMS</button>
+            <select id="hotspotRangeFilter" class="sim-select" title="Rentang waktu titik panas di peta">
+              <option value="1">24 Jam Terakhir (Live)</option>
+              <option value="7">7 Hari Terakhir (Historis)</option>
+              <option value="10">10 Hari Terakhir (Historis)</option>
+              <option value="30">30 Hari Terakhir (Arsip)</option>
+            </select>
+            <button class="btn" id="btnFirmsKey" title="Cek atau ubah NASA FIRMS MAP_KEY">🔑 Key FIRMS</button>
             <button class="btn primary" id="fitBtn">Zoom Kalimantan</button>
             <button class="btn" id="resetBtn">Reset</button>
           </div>
@@ -78,7 +87,7 @@
           </label>
           <label class="layer-chk">
             <input type="checkbox" id="chkRealtimeHotspots" checked>
-            <span class="badge badge-red">● Hotspot Real-Time (Live)</span>
+            <span class="badge badge-red" id="hotspotLayerLabel">● Hotspot (24 Jam)</span>
           </label>
           <label class="layer-chk">
             <input type="checkbox" id="chkBurnedArea">
@@ -93,7 +102,7 @@
         <div id="map" class="map-area"></div>
       </article>
 
-      <!-- SIMULASI PERGERAKAN API (DIPERBESAR & BISA DI-ZOOM) -->
+      <!-- SIMULASI PERGERAKAN API (SEUKURAN PETA KIRI & BISA DI-ZOOM) -->
       <article class="panel panel-simulation">
         <div class="panel-head">
           <div>
@@ -105,14 +114,12 @@
 
         <div class="sim-container">
           <div class="sim-screen" id="simScreen">
-            <!-- Kontrol Zoom Mengambang di Pojok Kanan Atas -->
             <div class="sim-zoom-controls">
               <button type="button" class="sim-zoom-btn" id="btnSimZoomIn" title="Perbesar (Zoom In)">+</button>
               <button type="button" class="sim-zoom-btn" id="btnSimZoomOut" title="Perkecil (Zoom Out)">−</button>
               <button type="button" class="sim-zoom-btn sim-zoom-reset" id="btnSimZoomReset" title="Reset Zoom">100%</button>
             </div>
 
-            <!-- Viewport Zoomable & Pannable -->
             <div class="sim-zoom-viewport" id="simZoomViewport">
               <div class="sim-zoom-stage" id="simZoomStage">
                 <canvas id="simCanvas" width="800" height="460" style="display:none;"></canvas>
@@ -139,14 +146,18 @@
         </div>
       </article>
 
-      <!-- ANALYTICS GRAFIK -->
+      <!-- ANALYTICS GRAFIK (HISTORIS SATELIT & MODEL CA-ABM) -->
       <article class="panel panel-analytics">
         <div class="panel-head">
           <div>
-            <h3>Grafik Analytics & Indikator Harian</h3>
-            <p>Tren kenaikan hotspot & luas terbakar hasil pemodelan harian CA-ABM</p>
+            <h3 id="chartPanelTitle">Grafik Historis Titik Api Harian (Satelit Live)</h3>
+            <p id="chartPanelSubtitle">Perubahan jumlah hotspot harian untuk memantau apakah kondisi membaik atau meningkat</p>
           </div>
-          <button class="btn" id="exportChartBtn">Export Data CSV</button>
+          <div class="toolbar">
+            <button class="btn primary" id="btnChartHistorical">🛰️ Historis Satelit</button>
+            <button class="btn" id="btnChartModel">🔥 Model CA-ABM</button>
+            <button class="btn" id="exportChartBtn">Export CSV</button>
+          </div>
         </div>
         <div class="chart-wrap">
           <canvas id="forecastChart"></canvas>
@@ -199,14 +210,14 @@
     </section>
 
     <footer>
-      KALIMANTAN FIRE INTELLIGENCE v2.0 &copy; 2026 — REAL-TIME BMKG, SATELLITE & CA-ABM WEBGIS PLATFORM
+      KALIMANTAN FIRE INTELLIGENCE v2.0 &copy; 2026 — REAL-TIME BMKG, HISTORICAL SATELLITE & CA-ABM WEBGIS PLATFORM
     </footer>
   </main>
 
-  <!-- LIBRARIES -->
-  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-  <script src="https://unpkg.com/georaster"></script>
-  <script src="https://unpkg.com/georaster-layer-for-leaflet/dist/georaster-layer-for-leaflet.min.js"></script>
+  <!-- LIBRARIES (FAST JSDELIVR CDN) -->
+  <script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/georaster/dist/georaster.browser.bundle.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/georaster-layer-for-leaflet/dist/georaster-layer-for-leaflet.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="app.js"></script>
