@@ -5,11 +5,11 @@
 
 const DEFAULT_NASA_FIRMS_KEY = "4f37c06e7146c0a2458922a929fff642";
 
-let map;
-let layerAdminBoundary = L.layerGroup();
-let layerRealtimeHotspots = L.layerGroup();
-let layerBurnedArea = L.layerGroup();
-let layerGeoTiff = L.layerGroup();
+let map = null;
+let layerAdminBoundary = null;
+let layerRealtimeHotspots = null;
+let layerBurnedArea = null;
+let layerGeoTiff = null;
 let forecastChartInstance = null;
 let rasterSimulationTimer = null;
 
@@ -24,7 +24,7 @@ let satelliteStore = {
 
 // Penyimpanan Global Data Grafik Model CA-ABM
 let modelCsvRows = [];
-let activeChartMode = 'historical'; // 'historical' | 'model'
+let activeChartMode = 'historical';
 
 // State Zoom & Pan untuk Layar Simulasi CA-ABM
 let simZoomState = {
@@ -36,16 +36,18 @@ let simZoomState = {
   startY: 0
 };
 
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
   initDate();
-  initMap();
   initSimulation();
   initSimulationZoom();
   initFirmsKeyButton();
   initChartModeControls();
   initHotspotRangeFilter();
 
-  // Render grafik awal
+  // Pastikan library Leaflet siap (otomatis muat cadangan jika CDN utama lambat)
+  await ensureLeafletLoaded();
+
+  initMap();
   renderDefaultModelChart();
 
   // Jalankan streaming API Real-Time & Historis Satelit + Cuaca BMKG + Model Lokal
@@ -53,6 +55,21 @@ document.addEventListener('DOMContentLoaded', () => {
   loadRealtimeAndHistoricalHotspots();
   loadLocalModelLayers();
 });
+
+// Pengaman Otomatis jika CDN Leaflet gagal/terblokir
+function ensureLeafletLoaded() {
+  return new Promise((resolve) => {
+    if (typeof L !== 'undefined') {
+      resolve(true);
+      return;
+    }
+    const script = document.createElement('script');
+    script.src = 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js';
+    script.onload = () => resolve(true);
+    script.onerror = () => resolve(false);
+    document.head.appendChild(script);
+  });
+}
 
 // 1. HEADER TANGGAL
 function initDate() {
@@ -68,6 +85,13 @@ function initDate() {
 
 // 2. INISIALISASI PETA LEAFLET
 function initMap() {
+  if (typeof L === 'undefined') return;
+
+  layerAdminBoundary = L.layerGroup();
+  layerRealtimeHotspots = L.layerGroup();
+  layerBurnedArea = L.layerGroup();
+  layerGeoTiff = L.layerGroup();
+
   map = L.map('map').setView([-1.4, 114.0], 6);
 
   const basemaps = {
@@ -87,8 +111,10 @@ function initMap() {
   document.getElementById('chkBurnedArea')?.addEventListener('change', e => e.target.checked ? map.addLayer(layerBurnedArea) : map.removeLayer(layerBurnedArea));
   document.getElementById('chkGeoTiff')?.addEventListener('change', e => e.target.checked ? map.addLayer(layerGeoTiff) : map.removeLayer(layerGeoTiff));
 
-  document.getElementById('fitBtn').onclick = () => map.setView([-1.4, 114.0], 6);
-  document.getElementById('resetBtn').onclick = () => map.setView([-1.4, 114.0], 6);
+  const fitBtn = document.getElementById('fitBtn');
+  const resetBtn = document.getElementById('resetBtn');
+  if (fitBtn) fitBtn.onclick = () => map.setView([-1.4, 114.0], 6);
+  if (resetBtn) resetBtn.onclick = () => map.setView([-1.4, 114.0], 6);
 }
 
 // Helper Fetch dengan Batas Waktu (Timeout)
@@ -169,7 +195,7 @@ async function loadRealtimeBMKGWeather() {
   try {
     const responses = await Promise.all(
       adm4Codes.map(loc =>
-        fetchWithTimeout(`https://api.bmkg.go.id/publik/prakiraan-cuaca?adm4=${loc.code}`, 5500)
+        fetchWithTimeout(`https://api.bmkg.go.id/publik/prakiraan-cuaca?adm4=${loc.code}`, 5000)
           .then(r => (r.ok ? r.json() : null))
           .catch(() => null)
       )
@@ -268,6 +294,22 @@ function formatDateUTC(daysOffset) {
   return d.toISOString().split('T')[0];
 }
 
+function parseCSVSimple(csvText) {
+  if (typeof Papa !== 'undefined') {
+    const parsed = Papa.parse(csvText, { header: true, skipEmptyLines: true });
+    return parsed.data || [];
+  }
+  const lines = csvText.trim().split(/\r?\n/);
+  if (lines.length < 2) return [];
+  const headers = lines[0].split(',').map(h => h.trim());
+  return lines.slice(1).map(line => {
+    const cols = line.split(',');
+    const obj = {};
+    headers.forEach((h, i) => { obj[h] = (cols[i] || '').trim(); });
+    return obj;
+  });
+}
+
 async function fetchFirmsAreaCSV(firmsKey, sensorName, dayRange, startDate = "") {
   const datePart = startDate ? `/${startDate}` : "";
   const url = `https://firms.modaps.eosdis.nasa.gov/api/area/csv/${encodeURIComponent(firmsKey)}/${sensorName}/108,-4.5,119,4.5/${dayRange}${datePart}`;
@@ -276,8 +318,8 @@ async function fetchFirmsAreaCSV(firmsKey, sensorName, dayRange, startDate = "")
     if (!res.ok) return [];
     const csvText = await res.text();
     if (csvText.includes('Invalid MAP_KEY') || csvText.includes('Error')) return [];
-    const parsed = Papa.parse(csvText, { header: true, skipEmptyLines: true });
-    return (parsed.data || []).filter(r => r.latitude && r.longitude && r.acq_date);
+    const rows = parseCSVSimple(csvText);
+    return rows.filter(r => r.latitude && r.longitude && r.acq_date);
   } catch (e) {
     return [];
   }
@@ -287,7 +329,6 @@ async function loadRealtimeAndHistoricalHotspots() {
   const firmsKey = (localStorage.getItem('nasa_firms_map_key') || DEFAULT_NASA_FIRMS_KEY).trim();
   if (!firmsKey) return;
 
-  // 1. Ambil data 24 jam terakhir (Hari Ini) & 10 hari terakhir (Near Real-Time)
   let sensorUsed = 'NOAA-21 VIIRS 375m';
   let [todayPts, nrt10dPts] = await Promise.all([
     fetchFirmsAreaCSV(firmsKey, 'VIIRS_NOAA21_NRT', 1),
@@ -302,7 +343,6 @@ async function loadRealtimeAndHistoricalHotspots() {
     ]);
   }
 
-  // 2. Ambil arsip historis hari ke-11 s.d. ke-30 lalu dari NASA FIRMS Standard Processing
   const date20Ago = formatDateUTC(-20);
   const date30Ago = formatDateUTC(-30);
   const spSensor = sensorUsed.includes('NOAA-21') ? 'VIIRS_NOAA21_SP' : 'VIIRS_NOAA20_SP';
@@ -312,7 +352,6 @@ async function loadRealtimeAndHistoricalHotspots() {
     fetchFirmsAreaCSV(firmsKey, spSensor, 10, date30Ago)
   ]);
 
-  // Gabungkan & hilangkan duplikat titik berdasarkan koordinat + waktu akuisisi
   const uniqueMap = new Map();
   [...spOldPts, ...spMidPts, ...nrt10dPts, ...todayPts].forEach(pt => {
     const key = `${pt.latitude}_${pt.longitude}_${pt.acq_date}_${pt.acq_time}`;
@@ -323,7 +362,6 @@ async function loadRealtimeAndHistoricalHotspots() {
   const has30DayArchive = spMidPts.length > 0 || spOldPts.length > 0;
   const windowDays = has30DayArchive ? 30 : 10;
 
-  // Bangun deret harian lengkap untuk grafik & statistik historis
   const countsByDate = {};
   allHistorical.forEach(pt => {
     countsByDate[pt.acq_date] = (countsByDate[pt.acq_date] || 0) + 1;
@@ -346,7 +384,6 @@ async function loadRealtimeAndHistoricalHotspots() {
     sensorName: sensorUsed
   };
 
-  // Hitung perbandingan historis: Hari Ini vs Rata-rata Harian Periode Historis
   const todayCount = todayPts.length;
   const totalHistCount = allHistorical.length;
   const avgDailyHist = totalHistCount / windowDays;
@@ -372,21 +409,26 @@ async function loadRealtimeAndHistoricalHotspots() {
     }
   }
 
-  // Update Kartu #1 & Kartu #2
-  document.getElementById('hotspotCount').textContent = `${todayCount.toLocaleString('id-ID')} Titik`;
-  document.getElementById('hotspotSourceSub').textContent =
-    `Total ${windowDays}h: ${totalHistCount.toLocaleString('id-ID')} titik (Rata-rata ${avgDailyHist.toFixed(1)}/hari • Puncak ${peakDayObj.count})`;
+  const countEl = document.getElementById('hotspotCount');
+  if (countEl) countEl.textContent = `${todayCount.toLocaleString('id-ID')} Titik`;
+
+  const subEl = document.getElementById('hotspotSourceSub');
+  if (subEl) {
+    subEl.textContent = `Total ${windowDays}h: ${totalHistCount.toLocaleString('id-ID')} titik (Rata-rata ${avgDailyHist.toFixed(1)}/hari • Puncak ${peakDayObj.count})`;
+  }
 
   const estAreaHa = Math.round(todayCount * 14.0625);
-  document.getElementById('burnedArea').textContent = `${estAreaHa.toLocaleString('id-ID')} ha`;
-  document.getElementById('burnedSourceSub').textContent =
-    `Estimasi 24j (${todayCount} × 14,1 ha) • Total ${windowDays}h: ${Math.round(totalHistCount * 14.0625).toLocaleString('id-ID')} ha`;
+  const burnedEl = document.getElementById('burnedArea');
+  if (burnedEl) burnedEl.textContent = `${estAreaHa.toLocaleString('id-ID')} ha`;
 
-  // Render titik di peta sesuai rentang waktu terpilih
+  const burnedSubEl = document.getElementById('burnedSourceSub');
+  if (burnedSubEl) {
+    burnedSubEl.textContent = `Estimasi 24j (${todayCount} × 14,1 ha) • Total ${windowDays}h: ${Math.round(totalHistCount * 14.0625).toLocaleString('id-ID')} ha`;
+  }
+
   const selectedDays = parseInt(document.getElementById('hotspotRangeFilter')?.value || '1', 10);
   renderHotspotsOnMap(selectedDays);
 
-  // Perbarui grafik jika sedang dalam mode Historis Satelit
   if (activeChartMode === 'historical') {
     renderHistoricalSatelliteChart();
   }
@@ -401,6 +443,7 @@ function initHotspotRangeFilter() {
 }
 
 function renderHotspotsOnMap(days) {
+  if (!layerRealtimeHotspots || typeof L === 'undefined') return;
   layerRealtimeHotspots.clearLayers();
   const labelBadge = document.getElementById('hotspotLayerLabel');
 
@@ -421,7 +464,6 @@ function renderHotspotsOnMap(days) {
     const lat = parseFloat(pt.latitude);
     const lon = parseFloat(pt.longitude);
 
-    // Pembeda warna berdasarkan usia titik api (merah = baru, oranye = 2-7 hari, kuning = 8-30 hari)
     let fillColor = '#ffd60a';
     let strokeColor = '#ffffff';
     let ageLabel = 'Arsip Historis (8–30 Hari)';
@@ -475,53 +517,54 @@ async function fetchVectorLayer(fileNameWithoutExt) {
 }
 
 async function loadLocalModelLayers() {
-  fetchVectorLayer('01_Batas_Administrasi_Pulau_Kalimantan')
-    .then(data => {
-      if (data) {
-        const geoLayer = L.geoJSON(data, { style: { color: '#9c83db', weight: 1.5, fillOpacity: 0.08 } });
-        layerAdminBoundary.addLayer(geoLayer);
-      }
-    });
+  if (typeof L !== 'undefined' && layerAdminBoundary) {
+    fetchVectorLayer('01_Batas_Administrasi_Pulau_Kalimantan')
+      .then(data => {
+        if (data) {
+          const geoLayer = L.geoJSON(data, { style: { color: '#9c83db', weight: 1.5, fillOpacity: 0.08 } });
+          layerAdminBoundary.addLayer(geoLayer);
+        }
+      });
 
-  fetchVectorLayer('02_Poligon_Area_Terbakar')
-    .then(data => {
-      if (data) {
-        const geoLayer = L.geoJSON(data, { style: { color: '#ffb45e', weight: 1.5, fillColor: '#ffb45e', fillOpacity: 0.4 } });
-        layerBurnedArea.addLayer(geoLayer);
-      }
-    });
+    fetchVectorLayer('02_Poligon_Area_Terbakar')
+      .then(data => {
+        if (data) {
+          const geoLayer = L.geoJSON(data, { style: { color: '#ffb45e', weight: 1.5, fillColor: '#ffb45e', fillOpacity: 0.4 } });
+          layerBurnedArea.addLayer(geoLayer);
+        }
+      });
 
-  fetch('./data/01_Area_Terbakar_Kumulatif.tif')
-    .then(res => res.ok ? res.arrayBuffer() : Promise.reject())
-    .then(async arrayBuffer => {
-      if (typeof parseGeoraster !== 'undefined') {
-        const georaster = await parseGeoraster(arrayBuffer);
-        const layerTif = new GeoRasterLayer({ georaster: georaster, opacity: 0.7, resolution: 128 });
-        layerGeoTiff.addLayer(layerTif);
-      }
-    })
-    .catch(() => {});
+    fetch('./data/01_Area_Terbakar_Kumulatif.tif')
+      .then(res => res.ok ? res.arrayBuffer() : Promise.reject())
+      .then(async arrayBuffer => {
+        if (typeof parseGeoraster !== 'undefined' && typeof GeoRasterLayer !== 'undefined') {
+          const georaster = await parseGeoraster(arrayBuffer);
+          const layerTif = new GeoRasterLayer({ georaster: georaster, opacity: 0.7, resolution: 128 });
+          layerGeoTiff.addLayer(layerTif);
+        }
+      })
+      .catch(() => {});
+  }
 
-  Papa.parse('./data/01_Indikator_Kebakaran_Harian.csv', {
-    download: true,
-    header: true,
-    skipEmptyLines: true,
-    complete: (results) => {
-      if (results.data && results.data.length > 0) {
-        modelCsvRows = results.data.filter(r => Object.keys(r).length > 1);
-        if (activeChartMode === 'model') renderModelChartFromCSV(modelCsvRows);
+  fetch('./data/01_Indikator_Kebakaran_Harian.csv')
+    .then(r => (r.ok ? r.text() : ''))
+    .then(txt => {
+      if (txt) {
+        modelCsvRows = parseCSVSimple(txt).filter(r => Object.keys(r).length > 1);
+        if (activeChartMode === 'model' && modelCsvRows.length > 0) {
+          renderModelChartFromCSV(modelCsvRows);
+        }
       }
-    }
-  });
+    }).catch(() => {});
 
-  Papa.parse('./data/03_Ringkasan_Simulasi.csv', {
-    download: true,
-    header: true,
-    skipEmptyLines: true,
-    complete: (results) => {
-      if (results.data && results.data.length > 0) renderTable(results.data);
-    }
-  });
+  fetch('./data/03_Ringkasan_Simulasi.csv')
+    .then(r => (r.ok ? r.text() : ''))
+    .then(txt => {
+      if (txt) {
+        const rows = parseCSVSimple(txt).filter(r => Object.keys(r).length > 1);
+        if (rows.length > 0) renderTable(rows);
+      }
+    }).catch(() => {});
 }
 
 // ============================================================
@@ -677,7 +720,7 @@ function playCanvasRasterSimulation(canvas, statusTextEl) {
     fetch(`./data/raster_CA_5x5_interval_${formattedIdx}.tif`)
       .then(res => res.arrayBuffer())
       .then(async buf => {
-        if (typeof parseGeoraster !== 'undefined') {
+        if (typeof parseGeoraster !== 'undefined' && typeof GeoRasterLayer !== 'undefined' && layerGeoTiff) {
           const georaster = await parseGeoraster(buf);
           const layerTif = new GeoRasterLayer({ georaster: georaster, opacity: 0.8 });
           layerGeoTiff.clearLayers();
@@ -757,6 +800,7 @@ function initChartModeControls() {
 }
 
 function renderHistoricalSatelliteChart() {
+  if (typeof Chart === 'undefined') return;
   const canvas = document.getElementById('forecastChart');
   if (!canvas) return;
   const ctx = canvas.getContext('2d');
@@ -825,6 +869,7 @@ function renderHistoricalSatelliteChart() {
 }
 
 function renderDefaultModelChart() {
+  if (typeof Chart === 'undefined') return;
   const canvas = document.getElementById('forecastChart');
   if (!canvas) return;
   const ctx = canvas.getContext('2d');
@@ -837,6 +882,7 @@ function renderDefaultModelChart() {
 }
 
 function renderModelChartFromCSV(csvData) {
+  if (typeof Chart === 'undefined') return;
   const canvas = document.getElementById('forecastChart');
   if (!canvas) return;
   const ctx = canvas.getContext('2d');
