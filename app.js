@@ -197,7 +197,8 @@ async function loadFallbackOpenMeteoWeather() {
     const dir = degToCompass(Math.round(wd / n));
     const dryness = Math.min(100, Math.max(10, 100 - avgH + 15));
 
-    document.getElementById('peatStatus').textContent = `WASPADA (${dryness}%)`;
+const statusText = dryness >= 75 ? 'SIAGA' : dryness >= 50 ? 'WASPADA' : 'AMAN';
+    document.getElementById('peatStatus').textContent = `${statusText} (${dryness}%)`;
     document.getElementById('windSpeed').textContent = `${avgWs} km/j (${dir})`;
     document.getElementById('valHumidity').textContent = `${avgH}%`;
     document.getElementById('valRain').textContent = `${avgR} mm`;
