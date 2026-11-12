@@ -1,6 +1,6 @@
 /* ============================================================
    KALIMANTAN FIRE INTELLIGENCE v2.0 - STYLESHEET
-   Dark Mode UI untuk Folder-based WebGIS Dashboard
+   Equal-Height Basemap & Zoomable Simulation Viewport
    ============================================================ */
 
 :root {
@@ -38,7 +38,7 @@ body {
   background: rgba(7, 16, 24, 0.95);
   position: sticky;
   top: 0;
-  z-index: 100;
+  z-index: 1000;
   backdrop-filter: blur(14px);
 }
 
@@ -74,10 +74,10 @@ body {
 .metrics { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 20px; }
 .metric { background: linear-gradient(145deg, #10232e, #0b1922); border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; }
 .metric label { font: 9px 'DM Mono', monospace; color: #7e9ba5; letter-spacing: 1.2px; }
-.metric strong { display: block; font-size: 24px; margin: 6px 0 2px; color: var(--mint); font-weight: 800; }
+.metric strong { display: block; font-size: 23px; margin: 6px 0 2px; color: var(--mint); font-weight: 800; }
 .metric small { font-size: 10px; color: #78929c; }
 
-/* GRID */
+/* GRID UTAMA */
 .main-dashboard-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 20px; }
 .panel {
   background: linear-gradient(145deg, rgba(13, 29, 39, 0.95), rgba(10, 23, 32, 0.95));
@@ -85,14 +85,15 @@ body {
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25); display: flex; flex-direction: column;
 }
 
-.panel-head { display: flex; align-items: center; justify-content: space-between; padding: 14px 18px; border-bottom: 1px solid var(--line); background: rgba(7, 16, 24, 0.4); }
+.panel-head { display: flex; align-items: center; justify-content: space-between; padding: 14px 18px; border-bottom: 1px solid var(--line); background: rgba(7, 16, 24, 0.4); gap: 10px; }
 .panel-head h3 { font-size: 13px; margin: 0 0 4px; color: var(--text); }
 .panel-head p { font-size: 10px; color: #78939d; margin: 0; }
+.toolbar { display: flex; gap: 6px; flex-wrap: wrap; }
 
-/* LAYER SWITCHER & MAP */
-.layer-control-bar { display: flex; gap: 10px; padding: 10px 16px; background: #091620; border-bottom: 1px solid var(--line); flex-wrap: wrap; }
+/* LAYER SWITCHER & MAP (TINGGI SAMA DENGAN SIMULASI: 460px) */
+.layer-control-bar { display: flex; gap: 8px; padding: 10px 16px; background: #091620; border-bottom: 1px solid var(--line); flex-wrap: wrap; }
 .layer-chk { display: flex; align-items: center; cursor: pointer; font-size: 11px; }
-.layer-chk input { margin-right: 6px; }
+.layer-chk input { margin-right: 5px; }
 
 .badge { font: 10px 'DM Mono', monospace; padding: 4px 8px; border-radius: 4px; }
 .badge-red { background: rgba(255, 108, 98, 0.15); color: var(--red); border: 1px solid var(--red); }
@@ -100,36 +101,126 @@ body {
 .badge-purple { background: rgba(156, 131, 219, 0.15); color: var(--purple); border: 1px solid var(--purple); }
 .badge-blue { background: rgba(98, 185, 233, 0.15); color: var(--blue); border: 1px solid var(--blue); }
 
-.map-area { height: 380px; width: 100%; }
+.map-area { height: 460px; width: 100%; }
 
 .leaflet-control-layers {
   background: rgba(12, 26, 36, 0.95) !important; color: var(--text) !important;
   border: 1px solid var(--line) !important; border-radius: 8px !important; padding: 8px 12px !important;
 }
 
-/* SIMULATION */
-.sim-container { padding: 16px; display: flex; flex-direction: column; gap: 12px; height: 100%; }
-.sim-screen {
-  position: relative; width: 100%; height: 280px; background: #08131b;
-  border: 1px solid var(--line); border-radius: 8px; overflow: hidden;
-  display: flex; align-items: center; justify-content: center;
+/* SIMULATION PANEL (DIPERBESAR SAMA DENGAN PETA KIRI & BISA ZOOM) */
+.tag-sim {
+  font: 10px 'DM Mono', monospace;
+  padding: 4px 8px;
+  border-radius: 5px;
+  background: rgba(88, 224, 177, 0.15);
+  color: var(--mint);
+  border: 1px solid var(--mint);
 }
 
-.sim-screen img { max-width: 100%; max-height: 100%; object-fit: contain; }
+.sim-container { padding: 12px 16px 16px; display: flex; flex-direction: column; gap: 12px; flex: 1; }
+
+.sim-screen {
+  position: relative;
+  width: 100%;
+  height: 460px; /* Samakan ukuran dengan .map-area */
+  background: #08131b;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  overflow: hidden;
+  user-select: none;
+}
+
+.sim-zoom-viewport {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: grab;
+}
+
+.sim-zoom-viewport:active {
+  cursor: grabbing;
+}
+
+.sim-zoom-stage {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transform-origin: center center;
+  transition: transform 0.08s ease-out;
+}
+
+#simGifPlayer,
+#simCanvas {
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: contain !important;
+  pointer-events: none;
+}
+
+/* Tombol Zoom Mengambang di Layar Simulasi */
+.sim-zoom-controls {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.sim-zoom-btn {
+  min-width: 32px;
+  height: 30px;
+  padding: 0 7px;
+  background: rgba(12, 26, 36, 0.92);
+  color: var(--text);
+  border: 1px solid var(--line);
+  border-radius: 5px;
+  font: 700 13px 'DM Mono', monospace;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.sim-zoom-btn:hover {
+  border-color: var(--mint);
+  color: var(--mint);
+}
+
+.sim-zoom-reset {
+  font-size: 10px;
+}
 
 .sim-overlay-info {
-  position: absolute; bottom: 10px; left: 10px; right: 10px; display: flex;
-  justify-content: space-between; background: rgba(7, 16, 24, 0.85); padding: 6px 12px;
-  border-radius: 4px; font: 10px 'DM Mono', monospace; color: var(--mint); border: 1px solid var(--line);
+  position: absolute;
+  bottom: 10px;
+  left: 10px;
+  right: 10px;
+  z-index: 20;
+  display: flex;
+  justify-content: space-between;
+  background: rgba(7, 16, 24, 0.88);
+  padding: 6px 12px;
+  border-radius: 4px;
+  font: 10px 'DM Mono', monospace;
+  color: var(--mint);
+  border: 1px solid var(--line);
 }
 
 .sim-controls { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
 .filter-group { display: flex; flex-direction: column; gap: 4px; }
 .filter-group label { font: 9px 'DM Mono', monospace; color: #78939d; }
-.sim-select { background: #102731; border: 1px solid var(--line); color: var(--text); padding: 6px 10px; border-radius: 6px; font-size: 11px; }
+.sim-select { background: #102731; border: 1px solid var(--line); color: var(--text); padding: 7px 10px; border-radius: 6px; font-size: 11px; }
 
 /* ANALYTICS & TABLES */
-.chart-wrap { height: 320px; padding: 16px; }
+.chart-wrap { position: relative; width: 100%; height: 320px; padding: 14px; }
+#forecastChart { width: 100% !important; height: 100% !important; }
+
 .weather-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; padding: 14px 16px; }
 .w-card { background: #091620; border: 1px solid var(--line); padding: 10px; border-radius: 6px; display: flex; flex-direction: column; }
 .w-label { font: 9px 'DM Mono', monospace; color: #78939d; }
@@ -142,7 +233,7 @@ th { text-align: left; font: 9px 'DM Mono', monospace; color: #78939d; padding: 
 td { padding: 8px; border-bottom: 1px solid #142a35; color: #c4d5d9; }
 
 /* BUTTONS & FOOTER */
-.btn { border: 1px solid var(--line); background: #102731; color: #d4e5e7; border-radius: 6px; padding: 7px 12px; font-size: 11px; cursor: pointer; transition: all 0.2s; }
+.btn { border: 1px solid var(--line); background: #102731; color: #d4e5e7; border-radius: 6px; padding: 7px 11px; font-size: 11px; cursor: pointer; transition: all 0.2s; }
 .btn:hover { border-color: var(--mint); color: var(--mint); }
 .btn.primary { background: #17634f; border-color: #238466; color: #eafff7; }
 
@@ -151,39 +242,4 @@ footer { font: 10px 'DM Mono', monospace; color: #55717c; text-align: center; pa
 @media (max-width: 1024px) {
   .main-dashboard-grid { grid-template-columns: 1fr; }
   .metrics { grid-template-columns: repeat(2, 1fr); }
-}
-
-/* FIX DIMENSI CANVAS SIMULASI & GRAFIK */
-#simCanvas {
-  width: 100% !important;
-  height: 100% !important;
-  object-fit: contain;
-}
-
-.chart-wrap {
-  position: relative;
-  width: 100%;
-  height: 300px;
-  padding: 12px;
-}
-
-#forecastChart {
-  width: 100% !important;
-  height: 100% !important;
-}
-
-/* FIX DIMENSI SIMULASI GIF & CANVAS */
-#simGifPlayer {
-  width: 100% !important;
-  height: 100% !important;
-  max-height: 280px !important;
-  object-fit: contain !important;
-  display: block;
-  margin: 0 auto;
-}
-
-#simCanvas {
-  width: 100% !important;
-  height: 280px !important;
-  object-fit: contain;
 }
