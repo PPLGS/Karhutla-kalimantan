@@ -1,6 +1,6 @@
 /* ============================================================
    KALIMANTAN FIRE INTELLIGENCE v2.0 - STYLESHEET
-   Equal-Height Basemap & Zoomable Simulation Viewport
+   Historical Trend Badges, Equal-Height Map & Zoomable CA-ABM
    ============================================================ */
 
 :root {
@@ -70,12 +70,45 @@ body {
 .date { border: 1px solid var(--line); padding: 6px 12px; border-radius: 6px; background: var(--panel); }
 .wrap { max-width: 1600px; margin: auto; padding: 20px 24px 40px; }
 
-/* METRICS */
+/* METRICS & HISTORICAL TREND BADGES */
 .metrics { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 20px; }
 .metric { background: linear-gradient(145deg, #10232e, #0b1922); border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; }
 .metric label { font: 9px 'DM Mono', monospace; color: #7e9ba5; letter-spacing: 1.2px; }
 .metric strong { display: block; font-size: 23px; margin: 6px 0 2px; color: var(--mint); font-weight: 800; }
-.metric small { font-size: 10px; color: #78929c; }
+.metric small { font-size: 10px; color: #8ca5af; display: block; margin-top: 2px; }
+
+.metric-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.trend-pill {
+  font: 700 10px 'DM Mono', monospace;
+  padding: 4px 8px;
+  border-radius: 6px;
+  letter-spacing: 0.4px;
+}
+
+.trend-improving {
+  background: rgba(88, 224, 177, 0.16);
+  color: var(--mint);
+  border: 1px solid rgba(88, 224, 177, 0.55);
+}
+
+.trend-worsening {
+  background: rgba(255, 108, 98, 0.18);
+  color: var(--red);
+  border: 1px solid rgba(255, 108, 98, 0.55);
+}
+
+.trend-neutral {
+  background: rgba(255, 180, 94, 0.15);
+  color: var(--amber);
+  border: 1px solid rgba(255, 180, 94, 0.45);
+}
 
 /* GRID UTAMA */
 .main-dashboard-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 20px; }
@@ -85,12 +118,12 @@ body {
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25); display: flex; flex-direction: column;
 }
 
-.panel-head { display: flex; align-items: center; justify-content: space-between; padding: 14px 18px; border-bottom: 1px solid var(--line); background: rgba(7, 16, 24, 0.4); gap: 10px; }
+.panel-head { display: flex; align-items: center; justify-content: space-between; padding: 14px 18px; border-bottom: 1px solid var(--line); background: rgba(7, 16, 24, 0.4); gap: 10px; flex-wrap: wrap; }
 .panel-head h3 { font-size: 13px; margin: 0 0 4px; color: var(--text); }
 .panel-head p { font-size: 10px; color: #78939d; margin: 0; }
-.toolbar { display: flex; gap: 6px; flex-wrap: wrap; }
+.toolbar { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
 
-/* LAYER SWITCHER & MAP (TINGGI SAMA DENGAN SIMULASI: 460px) */
+/* LAYER SWITCHER & MAP */
 .layer-control-bar { display: flex; gap: 8px; padding: 10px 16px; background: #091620; border-bottom: 1px solid var(--line); flex-wrap: wrap; }
 .layer-chk { display: flex; align-items: center; cursor: pointer; font-size: 11px; }
 .layer-chk input { margin-right: 5px; }
@@ -108,7 +141,7 @@ body {
   border: 1px solid var(--line) !important; border-radius: 8px !important; padding: 8px 12px !important;
 }
 
-/* SIMULATION PANEL (DIPERBESAR SAMA DENGAN PETA KIRI & BISA ZOOM) */
+/* SIMULATION PANEL */
 .tag-sim {
   font: 10px 'DM Mono', monospace;
   padding: 4px 8px;
@@ -123,7 +156,7 @@ body {
 .sim-screen {
   position: relative;
   width: 100%;
-  height: 460px; /* Samakan ukuran dengan .map-area */
+  height: 460px;
   background: #08131b;
   border: 1px solid var(--line);
   border-radius: 8px;
@@ -141,9 +174,7 @@ body {
   cursor: grab;
 }
 
-.sim-zoom-viewport:active {
-  cursor: grabbing;
-}
+.sim-zoom-viewport:active { cursor: grabbing; }
 
 .sim-zoom-stage {
   width: 100%;
@@ -163,7 +194,6 @@ body {
   pointer-events: none;
 }
 
-/* Tombol Zoom Mengambang di Layar Simulasi */
 .sim-zoom-controls {
   position: absolute;
   top: 10px;
@@ -187,14 +217,8 @@ body {
   transition: all 0.15s;
 }
 
-.sim-zoom-btn:hover {
-  border-color: var(--mint);
-  color: var(--mint);
-}
-
-.sim-zoom-reset {
-  font-size: 10px;
-}
+.sim-zoom-btn:hover { border-color: var(--mint); color: var(--mint); }
+.sim-zoom-reset { font-size: 10px; }
 
 .sim-overlay-info {
   position: absolute;
@@ -215,7 +239,7 @@ body {
 .sim-controls { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
 .filter-group { display: flex; flex-direction: column; gap: 4px; }
 .filter-group label { font: 9px 'DM Mono', monospace; color: #78939d; }
-.sim-select { background: #102731; border: 1px solid var(--line); color: var(--text); padding: 7px 10px; border-radius: 6px; font-size: 11px; }
+.sim-select { background: #102731; border: 1px solid var(--line); color: var(--text); padding: 7px 10px; border-radius: 6px; font-size: 11px; cursor: pointer; }
 
 /* ANALYTICS & TABLES */
 .chart-wrap { position: relative; width: 100%; height: 320px; padding: 14px; }
